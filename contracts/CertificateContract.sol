@@ -1,0 +1,105 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+
+contract CertificateContract is Ownable {
+    // Structs
+    struct Certificate {
+        bytes32 id;
+        address issuer;
+        string ipfsHash;
+        uint256 issuedAt;
+        bool isRevoked;
+        string revocationReason;
+    }
+
+    // State variables
+    mapping(bytes32 => Certificate) public certificates;
+    mapping(address => bool) public authorizedIssuers;
+    
+    // Events
+    event CertificateIssued(bytes32 indexed id, address indexed issuer, string ipfsHash);
+    event CertificateRevoked(bytes32 indexed id, string reason);
+    event IssuerAuthorized(address indexed issuer);
+    event IssuerRevoked(address indexed issuer);
+
+    // Constructor
+    constructor() Ownable(msg.sender) {
+        // Authorize the initial issuer (your wallet address)
+        authorizedIssuers[0xB322B099a09b34f3551cB9A75B708E660bBA0CB2] = true;
+        emit IssuerAuthorized(0xB322B099a09b34f3551cB9A75B708E660bBA0CB2);
+    }
+
+    // Modifiers
+    modifier onlyAuthorizedIssuer() {
+        require(authorizedIssuers[msg.sender], "Not authorized to issue certificates");
+        _;
+    }
+
+    // Functions
+    function authorizeIssuer(address issuer) external onlyOwner {
+        require(!authorizedIssuers[issuer], "Issuer already authorized");
+        authorizedIssuers[issuer] = true;
+        emit IssuerAuthorized(issuer);
+    }
+
+    function revokeIssuer(address issuer) external onlyOwner {
+        require(authorizedIssuers[issuer], "Issuer not authorized");
+        authorizedIssuers[issuer] = false;
+        emit IssuerRevoked(issuer);
+    }
+
+    function issueCertificate(bytes32 id, string calldata ipfsHash) external onlyAuthorizedIssuer {
+        require(certificates[id].issuedAt == 0, "Certificate ID already exists");
+        require(bytes(ipfsHash).length > 0, "IPFS hash cannot be empty");
+
+        certificates[id] = Certificate({
+            id: id,
+            issuer: msg.sender,
+            ipfsHash: ipfsHash,
+            issuedAt: block.timestamp,
+            isRevoked: false,
+            revocationReason: ""
+        });
+
+        emit CertificateIssued(id, msg.sender, ipfsHash);
+    }
+
+    function revokeCertificate(bytes32 id, string calldata reason) external {
+        Certificate storage cert = certificates[id];
+        require(cert.issuedAt != 0, "Certificate does not exist");
+        require(!cert.isRevoked, "Certificate already revoked");
+        require(cert.issuer == msg.sender || owner() == msg.sender, "Not authorized to revoke");
+        
+        cert.isRevoked = true;
+        cert.revocationReason = reason;
+        
+        emit CertificateRevoked(id, reason);
+    }
+
+    function verifyCertificate(bytes32 id) external view returns (
+        bool exists,
+        address issuer,
+        string memory ipfsHash,
+        uint256 issuedAt,
+        bool isRevoked,
+        string memory revocationReason
+    ) {
+        Certificate memory cert = certificates[id];
+        exists = cert.issuedAt != 0;
+        return (
+            exists,
+            cert.issuer,
+            cert.ipfsHash,
+            cert.issuedAt,
+            cert.isRevoked,
+            cert.revocationReason
+        );
+    }
+
+    function isIssuerAuthorized(address issuer) external view returns (bool) {
+        return authorizedIssuers[issuer];
+    }
+}
