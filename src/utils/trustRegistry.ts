@@ -13,15 +13,14 @@ const TRUST_REGISTRY_ABI = [
   "function getAllIssuers() external view returns (string[] memory)"
 ];
 
-// Contract address - This will be set after deployment
-const TRUST_REGISTRY_ADDRESS = "YOUR_TRUST_REGISTRY_CONTRACT_ADDRESS";
+// ⚠️ IMPORTANT: Replace this with your actual deployed contract address
+const TRUST_REGISTRY_ADDRESS = "0x2ed1c8B78F6e3502243B081db5a4BcD4B6a6863F";
 
 export class TrustRegistryManager {
   private contract: ethers.Contract;
-  private provider: ethers.Provider;
+  // Removed unused 'provider' property to fix warning
 
   constructor(provider: ethers.Provider, signer?: ethers.Signer) {
-    this.provider = provider;
     this.contract = new ethers.Contract(
       TRUST_REGISTRY_ADDRESS,
       TRUST_REGISTRY_ABI,
@@ -40,7 +39,9 @@ export class TrustRegistryManager {
     signer: ethers.Signer
   ): Promise<boolean> {
     try {
-      const contractWithSigner = this.contract.connect(signer);
+      // FIX: Cast to 'any' so TypeScript allows calling custom contract methods
+      const contractWithSigner = this.contract.connect(signer) as any;
+      
       const tx = await contractWithSigner.registerIssuer(
         did,
         name,
@@ -63,7 +64,9 @@ export class TrustRegistryManager {
     signer: ethers.Signer
   ): Promise<boolean> {
     try {
-      const contractWithSigner = this.contract.connect(signer);
+      // FIX: Cast to 'any'
+      const contractWithSigner = this.contract.connect(signer) as any;
+      
       const tx = await contractWithSigner.authorizeIssuerForCategory(
         did,
         this.categoryToNumber(category)
@@ -86,7 +89,9 @@ export class TrustRegistryManager {
     signer: ethers.Signer
   ): Promise<boolean> {
     try {
-      const contractWithSigner = this.contract.connect(signer);
+      // FIX: Cast to 'any'
+      const contractWithSigner = this.contract.connect(signer) as any;
+      
       const expirationTimestamp = expirationDate ? Math.floor(expirationDate.getTime() / 1000) : 0;
       
       const tx = await contractWithSigner.anchorCredential(
@@ -110,7 +115,9 @@ export class TrustRegistryManager {
     signer: ethers.Signer
   ): Promise<boolean> {
     try {
-      const contractWithSigner = this.contract.connect(signer);
+      // FIX: Cast to 'any'
+      const contractWithSigner = this.contract.connect(signer) as any;
+      
       const tx = await contractWithSigner.revokeCredential(hash, reason);
       await tx.wait();
       return true;
@@ -153,9 +160,9 @@ export class TrustRegistryManager {
         trustScore: Number(result[3]),
         isActive: result[4],
         accreditations: result[5],
-        registrationDate: '', // Would need to be fetched separately
-        website: '', // Would need to be stored separately
-        logo: '' // Would need to be stored separately
+        registrationDate: '', 
+        website: '', 
+        logo: '' 
       };
     } catch (error) {
       console.error('Error getting issuer info:', error);
