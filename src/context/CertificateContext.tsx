@@ -7,7 +7,7 @@ import { useWallet } from './WalletContext';
 
 // Define the API URL - Change this to your deployed backend URL when hosting
 // const API_URL = 'http://localhost:5000/api'; 
-const API_URL = 'https://blockchain-certificates-api.onrender.com/api';
+const API_URL = 'https://block-9-codeversity.onrender.com/api';
 export interface Certificate {
   id: string;
   name: string;
