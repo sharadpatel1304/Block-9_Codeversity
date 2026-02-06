@@ -105,7 +105,8 @@ export const DIDProvider: React.FC<DIDProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   
-  const { walletAddress, isConnected, signMessage } = useWallet();
+  // Removed unused 'signMessage' to fix warning
+  const { walletAddress, isConnected } = useWallet();
   const [trustRegistry, setTrustRegistry] = useState<TrustRegistryManager | null>(null);
 
   // Initialize Trust Registry
@@ -241,7 +242,7 @@ export const DIDProvider: React.FC<DIDProviderProps> = ({ children }) => {
           userDID,
           subjectDID,
           category,
-          expirationDate,
+          expirationDate || null, // FIXED: Convert undefined to null
           signer
         );
       }

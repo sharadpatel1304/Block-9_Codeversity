@@ -101,14 +101,15 @@ export class VCManager {
   }
 
   private static getCredentialType(category: CredentialCategory): string {
-    const typeMap = {
+    const typeMap: Record<string, string> = {
       [CredentialCategory.ACADEMIC]: 'AcademicCredential',
       [CredentialCategory.SKILL]: 'SkillCredential',
       [CredentialCategory.EMPLOYMENT]: 'EmploymentCredential',
-      [CredentialCategory.PROFESSIONAL]: 'ProfessionalCredential',
-      [CredentialCategory.GIG_WORK]: 'GigWorkCredential'
+      [CredentialCategory.GOVERNMENT]: 'GovernmentCredential', // Updated
+      [CredentialCategory.GIG]: 'GigCredential'               // Updated
     };
-    return typeMap[category];
+    // Default to generic if not found, though types should prevent this
+    return typeMap[category] || 'VerifiableCredential';
   }
 
   private static async createProof(

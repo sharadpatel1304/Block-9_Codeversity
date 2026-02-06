@@ -5,7 +5,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract CertificateContract is Ownable {
-    // Structs
+    
+    // --- UPDATED STRUCT ---
     struct Certificate {
         bytes32 id;
         address issuer;
@@ -13,23 +14,33 @@ contract CertificateContract is Ownable {
         uint256 issuedAt;
         bool isRevoked;
         string revocationReason;
+        // New Fields
+        string category;       // e.g., "academic", "government"
+        uint256 expirationDate; // Timestamp (0 means no expiration)
     }
 
     // State variables
     mapping(bytes32 => Certificate) public certificates;
     mapping(address => bool) public authorizedIssuers;
     
-    // Events
-    event CertificateIssued(bytes32 indexed id, address indexed issuer, string ipfsHash);
+    // --- UPDATED EVENTS ---
+    // Added 'category' to the event so indexers can filter by it easily
+    event CertificateIssued(
+        bytes32 indexed id, 
+        address indexed issuer, 
+        string ipfsHash, 
+        string category
+    );
+    
     event CertificateRevoked(bytes32 indexed id, string reason);
     event IssuerAuthorized(address indexed issuer);
     event IssuerRevoked(address indexed issuer);
 
     // Constructor
     constructor() Ownable(msg.sender) {
-        // Authorize the initial issuer (your wallet address)
-        authorizedIssuers[0xB322B099a09b34f3551cB9A75B708E660bBA0CB2] = true;
-        emit IssuerAuthorized(0xB322B099a09b34f3551cB9A75B708E660bBA0CB2);
+        // Authorize the deployer by default
+        authorizedIssuers[msg.sender] = true;
+        emit IssuerAuthorized(msg.sender);
     }
 
     // Modifiers
@@ -38,7 +49,8 @@ contract CertificateContract is Ownable {
         _;
     }
 
-    // Functions
+    // --- ISSUER MANAGEMENT ---
+    
     function authorizeIssuer(address issuer) external onlyOwner {
         require(!authorizedIssuers[issuer], "Issuer already authorized");
         authorizedIssuers[issuer] = true;
@@ -51,9 +63,18 @@ contract CertificateContract is Ownable {
         emit IssuerRevoked(issuer);
     }
 
-    function issueCertificate(bytes32 id, string calldata ipfsHash) external onlyAuthorizedIssuer {
+    // --- CORE FUNCTIONS ---
+
+    // Updated to accept 'category' and 'expirationDate'
+    function issueCertificate(
+        bytes32 id, 
+        string calldata ipfsHash,
+        string calldata category,
+        uint256 expirationDate
+    ) external onlyAuthorizedIssuer {
         require(certificates[id].issuedAt == 0, "Certificate ID already exists");
         require(bytes(ipfsHash).length > 0, "IPFS hash cannot be empty");
+        require(bytes(category).length > 0, "Category cannot be empty");
 
         certificates[id] = Certificate({
             id: id,
@@ -61,16 +82,20 @@ contract CertificateContract is Ownable {
             ipfsHash: ipfsHash,
             issuedAt: block.timestamp,
             isRevoked: false,
-            revocationReason: ""
+            revocationReason: "",
+            category: category,
+            expirationDate: expirationDate
         });
 
-        emit CertificateIssued(id, msg.sender, ipfsHash);
+        emit CertificateIssued(id, msg.sender, ipfsHash, category);
     }
 
     function revokeCertificate(bytes32 id, string calldata reason) external {
         Certificate storage cert = certificates[id];
         require(cert.issuedAt != 0, "Certificate does not exist");
         require(!cert.isRevoked, "Certificate already revoked");
+        
+        // Allow the original issuer OR the contract owner to revoke
         require(cert.issuer == msg.sender || owner() == msg.sender, "Not authorized to revoke");
         
         cert.isRevoked = true;
@@ -79,23 +104,29 @@ contract CertificateContract is Ownable {
         emit CertificateRevoked(id, reason);
     }
 
+    // Updated view function to return new fields
     function verifyCertificate(bytes32 id) external view returns (
         bool exists,
         address issuer,
         string memory ipfsHash,
         uint256 issuedAt,
         bool isRevoked,
-        string memory revocationReason
+        string memory revocationReason,
+        string memory category,
+        uint256 expirationDate
     ) {
         Certificate memory cert = certificates[id];
         exists = cert.issuedAt != 0;
+        
         return (
             exists,
             cert.issuer,
             cert.ipfsHash,
             cert.issuedAt,
             cert.isRevoked,
-            cert.revocationReason
+            cert.revocationReason,
+            cert.category,
+            cert.expirationDate
         );
     }
 

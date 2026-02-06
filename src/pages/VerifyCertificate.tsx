@@ -190,8 +190,17 @@ const VerifyCertificate: React.FC = () => {
                   </div>
                   
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-gray-700 mb-2">Certificate Type</h4>
-                    <p className="text-gray-800">{verificationResult.certificate.certificateType}</p>
+                    <h4 className="font-medium text-gray-700 mb-2">Credential Category</h4>
+                    <p className="text-gray-800">
+                      {verificationResult.certificate.certificateCategory}
+                    </p>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-gray-700 mb-2">Credential Sub-Category</h4>
+                    <p className="text-gray-800">
+                      {verificationResult.certificate.certificateSubCategory}
+                    </p>
                   </div>
                   
                   <div className="bg-gray-50 p-4 rounded-lg md:col-span-2">

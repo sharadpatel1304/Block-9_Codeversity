@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, CheckCircle, XCircle, Award } from 'lucide-react';
+import { X, CheckCircle, XCircle, Award, Tag, Layers } from 'lucide-react';
 import { formatDate } from '../utils/helpers';
 
 interface VerificationModalProps {
@@ -11,6 +11,8 @@ interface VerificationModalProps {
     name: string;
     date: Date;
     hashId: string;
+    category?: string;     // Added
+    subCategory?: string;  // Added
   } | null;
 }
 
@@ -74,9 +76,30 @@ const VerificationModal: React.FC<VerificationModalProps> = ({
                       <span className="font-medium">Recipient:</span> {certificateData.name}
                     </p>
                   </div>
-                  <p className="text-gray-600 pl-7">
-                    <span className="font-medium">Issue Date:</span> {formatDate(certificateData.date)}
-                  </p>
+                  
+                  {certificateData.category && (
+                    <div className="flex items-center gap-2">
+                      <Tag size={20} className="text-indigo-600" />
+                      <p className="text-gray-600 capitalize">
+                        <span className="font-medium">Category:</span> {certificateData.category}
+                      </p>
+                    </div>
+                  )}
+
+                  {certificateData.subCategory && (
+                    <div className="flex items-center gap-2">
+                      <Layers size={20} className="text-indigo-600" />
+                      <p className="text-gray-600">
+                        <span className="font-medium">Type:</span> {certificateData.subCategory}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 pl-7">
+                    <p className="text-gray-600">
+                      <span className="font-medium">Issue Date:</span> {formatDate(certificateData.date)}
+                    </p>
+                  </div>
                 </div>
               </div>
             )}

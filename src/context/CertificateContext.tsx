@@ -5,9 +5,11 @@ import toast from 'react-hot-toast';
 import { storeOnIPFS, retrieveFromIPFS } from '../utils/ipfs';
 import { useWallet } from './WalletContext';
 
-// Define the API URL - Change this to your deployed backend URL when hosting
-// const API_URL = 'http://localhost:5000/api'; 
+// Define the API URL
 const API_URL = 'https://block-9-codeversity.onrender.com/api';
+
+
+
 export interface Certificate {
   id: string;
   name: string;
@@ -15,6 +17,12 @@ export interface Certificate {
   issuerAddress: string;
   issuerName: string;
   certificateType: string;
+  
+  // --- ADDED NEW FIELDS ---
+  category?: string;
+  subCategory?: string;
+  // ------------------------
+
   issueDate: Date;
   expiryDate?: Date;
   metadata: {
@@ -64,24 +72,21 @@ const CertificateContext = createContext<CertificateContextType>({
   verifyCertificate: async () => ({ isValid: false, certificate: null, message: '' }),
   revokeCertificate: async () => false,
   shareCertificate: async () => false,
-  getCertificateStatus: () => 'valid', // Fixed: Added default implementation
+  getCertificateStatus: () => 'valid',
 });
 
 export const useCertificates = () => useContext(CertificateContext);
 
 // Export getCertificateStatus as a standalone function
 export const getCertificateStatus = (certificate: Certificate): 'valid' | 'expired' | 'revoked' => {
-  // Check if certificate is revoked
   if (certificate.status === 'revoked') {
     return 'revoked';
   }
   
-  // Check if certificate has expired
   if (certificate.expiryDate && new Date() > certificate.expiryDate) {
     return 'expired';
   }
   
-  // Certificate is valid
   return 'valid';
 };
 
@@ -98,7 +103,6 @@ export const CertificateProvider: React.FC<CertificateProviderProps> = ({ childr
   // SESSION MANAGEMENT: Fetch certificates from Backend API when wallet connects
   useEffect(() => {
     const fetchCertificates = async () => {
-      // If no wallet is connected, clear the session data
       if (!walletAddress) {
         setCertificates([]);
         return;
@@ -106,7 +110,6 @@ export const CertificateProvider: React.FC<CertificateProviderProps> = ({ childr
 
       setIsLoading(true);
       try {
-        // Fetch data for the connected wallet
         const response = await fetch(`${API_URL}/certificates/${walletAddress}`);
         
         if (!response.ok) {
@@ -116,7 +119,6 @@ export const CertificateProvider: React.FC<CertificateProviderProps> = ({ childr
         
         const data = await response.json();
         
-        // Transform ISO date strings from JSON back into Date objects for the frontend
         const parsedCertificates = data.map((cert: any) => ({
           ...cert,
           issueDate: new Date(cert.issueDate),
@@ -137,7 +139,6 @@ export const CertificateProvider: React.FC<CertificateProviderProps> = ({ childr
     fetchCertificates();
   }, [walletAddress]);
   
-  // Filter certificates based on wallet address
   const issuedCertificates = certificates.filter(cert => 
     cert.issuerAddress.toLowerCase() === walletAddress?.toLowerCase()
   );
@@ -146,7 +147,6 @@ export const CertificateProvider: React.FC<CertificateProviderProps> = ({ childr
     cert.recipientAddress?.toLowerCase() === walletAddress?.toLowerCase()
   );
   
-  // Update certificate statuses when certificates change
   useEffect(() => {
     if (certificates.length === 0) return;
     
@@ -155,7 +155,6 @@ export const CertificateProvider: React.FC<CertificateProviderProps> = ({ childr
       status: getCertificateStatus(cert)
     }));
     
-    // Only update if there are actual changes
     const hasChanges = updatedCertificates.some((cert, index) => 
       cert.status !== certificates[index]?.status
     );
@@ -178,6 +177,8 @@ export const CertificateProvider: React.FC<CertificateProviderProps> = ({ childr
       issueDate: certificate.issueDate.toISOString(),
       ipfsHash: certificate.ipfsHash,
       metadata: certificate.metadata,
+      category: certificate.category,       // Added to hash
+      subCategory: certificate.subCategory  // Added to hash
     });
     
     return ethers.keccak256(ethers.toUtf8Bytes(certData));
@@ -194,6 +195,7 @@ export const CertificateProvider: React.FC<CertificateProviderProps> = ({ childr
     try {
       const id = uuidv4();
       
+      // We create a temporary object. Typescript now knows about category/subCategory
       const certificateTemp: Omit<Certificate, 'blockchainHash' | 'signature'> = {
         ...certificateData,
         id,
@@ -202,11 +204,9 @@ export const CertificateProvider: React.FC<CertificateProviderProps> = ({ childr
         status: 'valid',
       };
       
-      // Store metadata on IPFS
       const ipfsHash = await storeOnIPFS(certificateTemp);
       certificateTemp.ipfsHash = ipfsHash;
       
-      // Generate Hash & Sign
       const blockchainHash = await generateBlockchainHash(certificateTemp);
       const signature = await signMessage(blockchainHash);
       
@@ -299,12 +299,34 @@ export const CertificateProvider: React.FC<CertificateProviderProps> = ({ childr
     setError(null);
     
     try {
-      const certificate = getCertificateById(id);
+      // 1. Try to find it in local state first
+      let certificate = getCertificateById(id);
       
+      // 2. If not found locally, try fetching from the API
+      if (!certificate) {
+        try {
+          const response = await fetch(`${API_URL}/certificate/${id}`);
+          if (response.ok) {
+            const data = await response.json();
+            // Convert strings back to Date objects
+            certificate = {
+              ...data,
+              issueDate: new Date(data.issueDate),
+              expiryDate: data.expiryDate ? new Date(data.expiryDate) : undefined,
+              revocationDate: data.revocationDate ? new Date(data.revocationDate) : undefined,
+            };
+          }
+        } catch (fetchError) {
+          console.error("Failed to fetch certificate from API", fetchError);
+        }
+      }
+      
+      // 3. If still not found, return error
       if (!certificate) {
         return { isValid: false, certificate: null, message: 'Certificate not found' };
       }
       
+      // 4. Check Revocation Status
       if (certificate.status === 'revoked') {
         return { 
           isValid: false, 
@@ -313,27 +335,20 @@ export const CertificateProvider: React.FC<CertificateProviderProps> = ({ childr
         };
       }
       
+      // 5. Check Expiration
       const currentStatus = getCertificateStatus(certificate);
       if (currentStatus === 'expired') {
         return { isValid: false, certificate, message: 'Certificate has expired' };
       }
       
-      try {
-        const ipfsData = await retrieveFromIPFS(certificate.ipfsHash);
-        if (!ipfsData) {
-          return { isValid: false, certificate, message: 'Failed to retrieve certificate data from IPFS' };
-        }
-      } catch (err) {
-        console.error('Error retrieving from IPFS:', err);
-      }
-      
+      // 6. Verify Blockchain Signature (Integrity Check)
       try {
         const recoveredAddress = ethers.verifyMessage(certificate.blockchainHash, certificate.signature);
         if (recoveredAddress.toLowerCase() !== certificate.issuerAddress.toLowerCase()) {
-          return { isValid: false, certificate, message: 'Invalid signature' };
+          return { isValid: false, certificate, message: 'Invalid signature - Authenticity check failed' };
         }
       } catch (err) {
-        return { isValid: false, certificate, message: 'Failed to verify signature' };
+        return { isValid: false, certificate, message: 'Failed to verify cryptographic signature' };
       }
       
       return { isValid: true, certificate, message: 'Certificate is valid' };

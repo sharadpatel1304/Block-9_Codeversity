@@ -19,7 +19,7 @@ const Navbar: React.FC = () => {
           <div className="flex items-center gap-2">
             <Award className="w-8 h-8 text-indigo-600" />
             <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
-              Blockchain Certificates
+              OpenCred
             </h1>
           </div>
           

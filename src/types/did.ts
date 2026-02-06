@@ -1,4 +1,5 @@
-// W3C DID and Verifiable Credential Types
+// types/did.ts
+
 export interface DIDDocument {
   '@context': string[];
   id: string;
@@ -89,7 +90,9 @@ export enum CredentialCategory {
   SKILL = 'skill',
   EMPLOYMENT = 'employment',
   PROFESSIONAL = 'professional',
-  GIG_WORK = 'gig-work'
+  GIG_WORK = 'gig-work', // Legacy
+  GOVERNMENT = 'government', // New
+  GIG = 'gig'                // New
 }
 
 export interface AcademicCredential extends CredentialSubject {
@@ -136,6 +139,19 @@ export interface GigWorkCredential extends CredentialSubject {
   rating?: number;
   clientFeedback?: string;
   projectDescription: string;
+}
+
+// New Interfaces for added categories
+export interface GovernmentCredential extends CredentialSubject {
+  licenseType: string;
+  authority: string;
+  jurisdiction?: string;
+}
+
+export interface GigCredential extends CredentialSubject {
+  platform: string;
+  role: string;
+  rating?: number;
 }
 
 // Issuer Types and Trust Registry

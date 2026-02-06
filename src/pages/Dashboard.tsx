@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FileCheck, Award, Wallet, Shield, Upload, Download } from 'lucide-react';
+import { FileCheck, Award, Wallet, Shield, Upload} from 'lucide-react';
 import { useWallet } from '../context/WalletContext';
 import { useCertificates, getCertificateStatus } from '../context/CertificateContext';
 
@@ -11,7 +11,7 @@ const Dashboard: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto">
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-6">Blockchain Certificate Platform</h1>
+        <h1 className="text-3xl font-bold text-gray-800 mb-6">OpenCred</h1>
         <p className="text-lg text-gray-600 mb-8">
           A secure, tamper-proof platform for issuing, managing, and verifying digital certificates using blockchain technology.
         </p>

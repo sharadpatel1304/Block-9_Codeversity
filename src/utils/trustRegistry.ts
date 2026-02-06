@@ -18,7 +18,6 @@ const TRUST_REGISTRY_ADDRESS = "0x2ed1c8B78F6e3502243B081db5a4BcD4B6a6863F";
 
 export class TrustRegistryManager {
   private contract: ethers.Contract;
-  // Removed unused 'provider' property to fix warning
 
   constructor(provider: ethers.Provider, signer?: ethers.Signer) {
     this.contract = new ethers.Contract(
@@ -39,7 +38,6 @@ export class TrustRegistryManager {
     signer: ethers.Signer
   ): Promise<boolean> {
     try {
-      // FIX: Cast to 'any' so TypeScript allows calling custom contract methods
       const contractWithSigner = this.contract.connect(signer) as any;
       
       const tx = await contractWithSigner.registerIssuer(
@@ -64,7 +62,6 @@ export class TrustRegistryManager {
     signer: ethers.Signer
   ): Promise<boolean> {
     try {
-      // FIX: Cast to 'any'
       const contractWithSigner = this.contract.connect(signer) as any;
       
       const tx = await contractWithSigner.authorizeIssuerForCategory(
@@ -89,7 +86,6 @@ export class TrustRegistryManager {
     signer: ethers.Signer
   ): Promise<boolean> {
     try {
-      // FIX: Cast to 'any'
       const contractWithSigner = this.contract.connect(signer) as any;
       
       const expirationTimestamp = expirationDate ? Math.floor(expirationDate.getTime() / 1000) : 0;
@@ -115,7 +111,6 @@ export class TrustRegistryManager {
     signer: ethers.Signer
   ): Promise<boolean> {
     try {
-      // FIX: Cast to 'any'
       const contractWithSigner = this.contract.connect(signer) as any;
       
       const tx = await contractWithSigner.revokeCredential(hash, reason);
@@ -160,9 +155,9 @@ export class TrustRegistryManager {
         trustScore: Number(result[3]),
         isActive: result[4],
         accreditations: result[5],
-        registrationDate: '', 
-        website: '', 
-        logo: '' 
+        registrationDate: '', // Not returned by contract view, would need event query
+        website: '', // Not returned by minimal view, would need struct query
+        logo: '' // Not stored on-chain
       };
     } catch (error) {
       console.error('Error getting issuer info:', error);
@@ -219,15 +214,18 @@ export class TrustRegistryManager {
     return typeMap[num];
   }
 
+  // --- UPDATED CATEGORY MAPPING ---
   private categoryToNumber(category: CredentialCategory): number {
-    const categoryMap = {
+    const categoryMap: Record<string, number> = {
       [CredentialCategory.ACADEMIC]: 0,
       [CredentialCategory.SKILL]: 1,
       [CredentialCategory.EMPLOYMENT]: 2,
       [CredentialCategory.PROFESSIONAL]: 3,
-      [CredentialCategory.GIG_WORK]: 4
+      [CredentialCategory.GIG_WORK]: 4, // Legacy
+      [CredentialCategory.GOVERNMENT]: 5, // New
+      [CredentialCategory.GIG]: 6         // New
     };
-    return categoryMap[category];
+    return categoryMap[category] ?? 0;
   }
 
   private numberToCategory(num: number): CredentialCategory {
@@ -236,8 +234,11 @@ export class TrustRegistryManager {
       CredentialCategory.SKILL,
       CredentialCategory.EMPLOYMENT,
       CredentialCategory.PROFESSIONAL,
-      CredentialCategory.GIG_WORK
+      CredentialCategory.GIG_WORK,
+      CredentialCategory.GOVERNMENT, // New
+      CredentialCategory.GIG         // New
     ];
-    return categoryMap[num];
+    // Default to academic if out of bounds
+    return categoryMap[num] || CredentialCategory.ACADEMIC;
   }
 }

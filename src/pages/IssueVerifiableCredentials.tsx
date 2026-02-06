@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Plus, X, Loader, Award, Building, GraduationCap, Briefcase, Star } from 'lucide-react';
+import { Shield, Plus, X, Loader, Award, Building, GraduationCap, Briefcase, Star, Scale, Globe } from 'lucide-react';
 import { useDID } from '../context/DIDContext';
 import { useWallet } from '../context/WalletContext';
 import { 
@@ -9,7 +9,8 @@ import {
   SkillCredential,
   EmploymentCredential,
   ProfessionalCredential,
-  GigWorkCredential
+  GovernmentCredential, // Added
+  GigCredential         // Added
 } from '../types/did';
 import Dropdown from '../components/Dropdown';
 import toast from 'react-hot-toast';
@@ -23,7 +24,6 @@ const IssueVerifiableCredentials: React.FC = () => {
     registerAsIssuer,
     getIssuerProfile,
     getAllIssuers,
-    registeredIssuers
   } = useDID();
 
   const [isRegisteredIssuer, setIsRegisteredIssuer] = useState(false);
@@ -41,7 +41,8 @@ const IssueVerifiableCredentials: React.FC = () => {
     accreditations: [] as string[]
   });
 
-  // Credential Forms
+  // --- CREDENTIAL FORMS ---
+
   const [academicForm, setAcademicForm] = useState<Partial<AcademicCredential>>({
     degree: '',
     institution: '',
@@ -78,13 +79,16 @@ const IssueVerifiableCredentials: React.FC = () => {
     specializations: []
   });
 
-  const [gigWorkForm, setGigWorkForm] = useState<Partial<GigWorkCredential>>({
+  const [governmentForm, setGovernmentForm] = useState<Partial<GovernmentCredential>>({
+    licenseType: '',
+    authority: '',
+    jurisdiction: ''
+  });
+
+  const [gigForm, setGigForm] = useState<Partial<GigCredential>>({
     platform: '',
-    serviceType: '',
-    completionDate: '',
-    rating: undefined,
-    clientFeedback: '',
-    projectDescription: ''
+    role: '',
+    rating: undefined
   });
 
   const [newItem, setNewItem] = useState('');
@@ -173,13 +177,25 @@ const IssueVerifiableCredentials: React.FC = () => {
         credentialData = professionalForm;
         break;
       
-      case CredentialCategory.GIG_WORK:
-        if (!gigWorkForm.platform || !gigWorkForm.serviceType || !gigWorkForm.projectDescription) {
-          toast.error('Please fill in all required gig work fields');
+      case CredentialCategory.GOVERNMENT:
+        if (!governmentForm.licenseType || !governmentForm.authority) {
+          toast.error('Please fill in all required government fields');
           return;
         }
-        credentialData = gigWorkForm;
+        credentialData = governmentForm;
         break;
+
+      case CredentialCategory.GIG:
+        if (!gigForm.platform || !gigForm.role) {
+          toast.error('Please fill in all required gig fields');
+          return;
+        }
+        credentialData = gigForm;
+        break;
+      
+      default:
+        toast.error('Invalid category selected');
+        return;
     }
 
     try {
@@ -188,7 +204,6 @@ const IssueVerifiableCredentials: React.FC = () => {
       
       // Reset forms
       resetForms();
-      toast.success('Verifiable credential issued successfully!');
     } catch (error: any) {
       toast.error(error.message || 'Failed to issue credential');
     }
@@ -209,8 +224,11 @@ const IssueVerifiableCredentials: React.FC = () => {
     setProfessionalForm({
       licenseNumber: '', profession: '', issuingAuthority: '', issueDate: '', expirationDate: '', specializations: []
     });
-    setGigWorkForm({
-      platform: '', serviceType: '', completionDate: '', rating: undefined, clientFeedback: '', projectDescription: ''
+    setGovernmentForm({
+      licenseType: '', authority: '', jurisdiction: ''
+    });
+    setGigForm({
+      platform: '', role: '', rating: undefined
     });
   };
 
@@ -317,15 +335,137 @@ const IssueVerifiableCredentials: React.FC = () => {
     }
   };
 
+  const renderCredentialForm = () => {
+    switch (selectedCategory) {
+      case CredentialCategory.ACADEMIC:
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Degree *</label>
+              <input type="text" value={academicForm.degree || ''} onChange={(e) => setAcademicForm(prev => ({ ...prev, degree: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Institution *</label>
+              <input type="text" value={academicForm.institution || ''} onChange={(e) => setAcademicForm(prev => ({ ...prev, institution: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Field of Study *</label>
+              <input type="text" value={academicForm.fieldOfStudy || ''} onChange={(e) => setAcademicForm(prev => ({ ...prev, fieldOfStudy: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Graduation Date</label>
+              <input type="date" value={academicForm.graduationDate || ''} onChange={(e) => setAcademicForm(prev => ({ ...prev, graduationDate: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+            </div>
+          </div>
+        );
+
+      case CredentialCategory.SKILL:
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Skill Name *</label>
+              <input type="text" value={skillForm.skillName || ''} onChange={(e) => setSkillForm(prev => ({ ...prev, skillName: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+            </div>
+            <Dropdown label="Skill Level" value={skillForm.skillLevel || 'intermediate'} onChange={(value) => setSkillForm(prev => ({ ...prev, skillLevel: value as any }))} options={[{ value: 'beginner', label: 'Beginner' }, { value: 'intermediate', label: 'Intermediate' }, { value: 'advanced', label: 'Advanced' }, { value: 'expert', label: 'Expert' }]} />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Certifying Organization *</label>
+              <input type="text" value={skillForm.certifyingOrganization || ''} onChange={(e) => setSkillForm(prev => ({ ...prev, certifyingOrganization: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+            </div>
+          </div>
+        );
+
+      case CredentialCategory.EMPLOYMENT:
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Job Title *</label>
+              <input type="text" value={employmentForm.jobTitle || ''} onChange={(e) => setEmploymentForm(prev => ({ ...prev, jobTitle: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Employer *</label>
+              <input type="text" value={employmentForm.employer || ''} onChange={(e) => setEmploymentForm(prev => ({ ...prev, employer: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
+              <input type="date" value={employmentForm.startDate || ''} onChange={(e) => setEmploymentForm(prev => ({ ...prev, startDate: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+              <input type="date" value={employmentForm.endDate || ''} onChange={(e) => setEmploymentForm(prev => ({ ...prev, endDate: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+            </div>
+          </div>
+        );
+
+      case CredentialCategory.PROFESSIONAL:
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">License Number *</label>
+              <input type="text" value={professionalForm.licenseNumber || ''} onChange={(e) => setProfessionalForm(prev => ({ ...prev, licenseNumber: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Profession *</label>
+              <input type="text" value={professionalForm.profession || ''} onChange={(e) => setProfessionalForm(prev => ({ ...prev, profession: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Issuing Authority *</label>
+              <input type="text" value={professionalForm.issuingAuthority || ''} onChange={(e) => setProfessionalForm(prev => ({ ...prev, issuingAuthority: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Issue Date *</label>
+              <input type="date" value={professionalForm.issueDate || ''} onChange={(e) => setProfessionalForm(prev => ({ ...prev, issueDate: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+            </div>
+          </div>
+        );
+
+      case CredentialCategory.GOVERNMENT:
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">License/ID Type *</label>
+              <input type="text" value={governmentForm.licenseType || ''} onChange={(e) => setGovernmentForm(prev => ({ ...prev, licenseType: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. Drivers License" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Issuing Authority *</label>
+              <input type="text" value={governmentForm.authority || ''} onChange={(e) => setGovernmentForm(prev => ({ ...prev, authority: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. Dept of Transport" required />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Jurisdiction</label>
+              <input type="text" value={governmentForm.jurisdiction || ''} onChange={(e) => setGovernmentForm(prev => ({ ...prev, jurisdiction: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. California, USA" />
+            </div>
+          </div>
+        );
+
+      case CredentialCategory.GIG:
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Platform *</label>
+              <input type="text" value={gigForm.platform || ''} onChange={(e) => setGigForm(prev => ({ ...prev, platform: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. Upwork, Uber" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Role/Service *</label>
+              <input type="text" value={gigForm.role || ''} onChange={(e) => setGigForm(prev => ({ ...prev, role: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. Frontend Developer" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Rating (0-5)</label>
+              <input type="number" step="0.1" min="0" max="5" value={gigForm.rating || ''} onChange={(e) => setGigForm(prev => ({ ...prev, rating: parseFloat(e.target.value) || undefined }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+            </div>
+          </div>
+        );
+      
+      default:
+        return <div>Select a category</div>;
+    }
+  };
+
   if (!isConnected) {
     return (
       <div className="max-w-4xl mx-auto">
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 text-center">
           <Shield className="w-16 h-16 text-indigo-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-800 mb-4">Issue Verifiable Credentials</h1>
-          <p className="text-gray-600 mb-6">
-            Connect your wallet to issue W3C-compliant verifiable credentials.
-          </p>
+          <p className="text-gray-600 mb-6">Connect your wallet to issue W3C-compliant verifiable credentials.</p>
         </div>
       </div>
     );
@@ -337,15 +477,8 @@ const IssueVerifiableCredentials: React.FC = () => {
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 text-center">
           <Building className="w-16 h-16 text-indigo-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-800 mb-4">Register as Issuer</h1>
-          <p className="text-gray-600 mb-6">
-            You need to register as a trusted issuer before you can issue verifiable credentials.
-          </p>
-          <button
-            onClick={() => setShowRegistration(true)}
-            className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-6 py-3 rounded-lg hover:opacity-90 transition-opacity duration-200"
-          >
-            Register as Issuer
-          </button>
+          <p className="text-gray-600 mb-6">You need to register as a trusted issuer before you can issue verifiable credentials.</p>
+          <button onClick={() => setShowRegistration(true)} className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-6 py-3 rounded-lg hover:opacity-90 transition-opacity duration-200">Register as Issuer</button>
         </div>
       </div>
     );
@@ -356,123 +489,33 @@ const IssueVerifiableCredentials: React.FC = () => {
       <div className="max-w-4xl mx-auto">
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8">
           <h1 className="text-2xl font-bold text-gray-800 mb-6">Register as Issuer</h1>
-          
           <form onSubmit={handleIssuerRegistration} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Organization Name *
-                </label>
-                <input
-                  type="text"
-                  value={issuerForm.name}
-                  onChange={(e) => setIssuerForm(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  required
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Organization Name *</label>
+                <input type="text" value={issuerForm.name} onChange={(e) => setIssuerForm(prev => ({ ...prev, name: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
               </div>
-
-              <Dropdown
-                label="Issuer Type *"
-                value={issuerForm.type}
-                onChange={(value) => setIssuerForm(prev => ({ ...prev, type: value as IssuerType }))}
-                options={[
-                  { value: IssuerType.UNIVERSITY, label: 'University' },
-                  { value: IssuerType.SKILL_INSTITUTE, label: 'Skill Institute' },
-                  { value: IssuerType.EMPLOYER, label: 'Employer' },
-                  { value: IssuerType.GIG_PLATFORM, label: 'Gig Platform' },
-                  { value: IssuerType.GOVERNMENT, label: 'Government Agency' },
-                  { value: IssuerType.CERTIFICATION_BODY, label: 'Certification Body' }
-                ]}
-              />
-
+              <Dropdown label="Issuer Type *" value={issuerForm.type} onChange={(value) => setIssuerForm(prev => ({ ...prev, type: value as IssuerType }))} options={[{ value: IssuerType.UNIVERSITY, label: 'University' }, { value: IssuerType.SKILL_INSTITUTE, label: 'Skill Institute' }, { value: IssuerType.EMPLOYER, label: 'Employer' }, { value: IssuerType.GIG_PLATFORM, label: 'Gig Platform' }, { value: IssuerType.GOVERNMENT, label: 'Government Agency' }, { value: IssuerType.CERTIFICATION_BODY, label: 'Certification Body' }]} />
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Website
-                </label>
-                <input
-                  type="url"
-                  value={issuerForm.website}
-                  onChange={(e) => setIssuerForm(prev => ({ ...prev, website: e.target.value }))}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                <input type="url" value={issuerForm.website} onChange={(e) => setIssuerForm(prev => ({ ...prev, website: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
               </div>
-
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description *
-                </label>
-                <textarea
-                  value={issuerForm.description}
-                  onChange={(e) => setIssuerForm(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  rows={3}
-                  required
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                <textarea value={issuerForm.description} onChange={(e) => setIssuerForm(prev => ({ ...prev, description: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" rows={3} required />
               </div>
-
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Accreditations
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Accreditations</label>
                 <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={newItem}
-                    onChange={(e) => setNewItem(e.target.value)}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Add accreditation"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => addArrayItem('issuer', 'accreditations')}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                  >
-                    <Plus size={20} />
-                  </button>
+                  <input type="text" value={newItem} onChange={(e) => setNewItem(e.target.value)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Add accreditation" />
+                  <button type="button" onClick={() => addArrayItem('issuer', 'accreditations')} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"><Plus size={20} /></button>
                 </div>
-                
-                {issuerForm.accreditations.length > 0 && (
-                  <div className="space-y-2">
-                    {issuerForm.accreditations.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between bg-gray-50 px-4 py-2 rounded-lg">
-                        <span className="text-gray-800">{item}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeArrayItem('issuer', 'accreditations', index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <X size={20} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {issuerForm.accreditations.length > 0 && (<div className="space-y-2">{issuerForm.accreditations.map((item, index) => (<div key={index} className="flex items-center justify-between bg-gray-50 px-4 py-2 rounded-lg"><span className="text-gray-800">{item}</span><button type="button" onClick={() => removeArrayItem('issuer', 'accreditations', index)} className="text-red-500 hover:text-red-700"><X size={20} /></button></div>))}</div>)}
               </div>
             </div>
-
             <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowRegistration(false)}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-6 py-3 rounded-lg hover:opacity-90 transition-opacity duration-200 disabled:opacity-50 flex items-center gap-2"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader className="w-5 h-5 animate-spin" />
-                    <span>Registering...</span>
-                  </>
-                ) : (
-                  <span>Register as Issuer</span>
-                )}
-              </button>
+              <button type="button" onClick={() => setShowRegistration(false)} className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button type="submit" disabled={isLoading} className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-6 py-3 rounded-lg hover:opacity-90 transition-opacity duration-200 disabled:opacity-50 flex items-center gap-2">{isLoading ? (<><Loader className="w-5 h-5 animate-spin" /><span>Registering...</span></>) : (<span>Register as Issuer</span>)}</button>
             </div>
           </form>
         </div>
@@ -480,207 +523,48 @@ const IssueVerifiableCredentials: React.FC = () => {
     );
   }
 
-  const renderCredentialForm = () => {
-    switch (selectedCategory) {
-      case CredentialCategory.ACADEMIC:
-        return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Degree *</label>
-              <input
-                type="text"
-                value={academicForm.degree || ''}
-                onChange={(e) => setAcademicForm(prev => ({ ...prev, degree: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Institution *</label>
-              <input
-                type="text"
-                value={academicForm.institution || ''}
-                onChange={(e) => setAcademicForm(prev => ({ ...prev, institution: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Field of Study *</label>
-              <input
-                type="text"
-                value={academicForm.fieldOfStudy || ''}
-                onChange={(e) => setAcademicForm(prev => ({ ...prev, fieldOfStudy: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Graduation Date</label>
-              <input
-                type="date"
-                value={academicForm.graduationDate || ''}
-                onChange={(e) => setAcademicForm(prev => ({ ...prev, graduationDate: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">GPA</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                max="4"
-                value={academicForm.gpa || ''}
-                onChange={(e) => setAcademicForm(prev => ({ ...prev, gpa: parseFloat(e.target.value) || undefined }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
-            </div>
-          </div>
-        );
-
-      case CredentialCategory.SKILL:
-        return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Skill Name *</label>
-              <input
-                type="text"
-                value={skillForm.skillName || ''}
-                onChange={(e) => setSkillForm(prev => ({ ...prev, skillName: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                required
-              />
-            </div>
-            <Dropdown
-              label="Skill Level"
-              value={skillForm.skillLevel || 'intermediate'}
-              onChange={(value) => setSkillForm(prev => ({ ...prev, skillLevel: value as any }))}
-              options={[
-                { value: 'beginner', label: 'Beginner' },
-                { value: 'intermediate', label: 'Intermediate' },
-                { value: 'advanced', label: 'Advanced' },
-                { value: 'expert', label: 'Expert' }
-              ]}
-            />
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Certifying Organization *</label>
-              <input
-                type="text"
-                value={skillForm.certifyingOrganization || ''}
-                onChange={(e) => setSkillForm(prev => ({ ...prev, certifyingOrganization: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Completion Date</label>
-              <input
-                type="date"
-                value={skillForm.completionDate || ''}
-                onChange={(e) => setSkillForm(prev => ({ ...prev, completionDate: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Assessment Score</label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={skillForm.assessmentScore || ''}
-                onChange={(e) => setSkillForm(prev => ({ ...prev, assessmentScore: parseInt(e.target.value) || undefined }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
-            </div>
-          </div>
-        );
-
-      // Add other credential forms...
-      default:
-        return <div>Select a credential category to continue</div>;
-    }
-  };
-
   return (
     <div className="max-w-6xl mx-auto">
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">Issue Verifiable Credentials</h1>
-        
         <form onSubmit={handleCredentialIssue} className="space-y-8">
-          {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Subject DID *
-              </label>
-              <input
-                type="text"
-                value={subjectDID}
-                onChange={(e) => setSubjectDID(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="did:ethr:0x..."
-                required
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Subject DID *</label>
+              <input type="text" value={subjectDID} onChange={(e) => setSubjectDID(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="did:ethr:0x..." required />
             </div>
-
-            <Dropdown
-              label="Credential Category *"
-              value={selectedCategory}
-              onChange={(value) => setSelectedCategory(value as CredentialCategory)}
+            <Dropdown 
+              label="Credential Category *" 
+              value={selectedCategory} 
+              onChange={(value) => setSelectedCategory(value as CredentialCategory)} 
               options={[
-                { value: CredentialCategory.ACADEMIC, label: 'Academic Qualification' },
-                { value: CredentialCategory.SKILL, label: 'Skill Certification' },
-                { value: CredentialCategory.EMPLOYMENT, label: 'Employment Record' },
-                { value: CredentialCategory.PROFESSIONAL, label: 'Professional License' },
-                { value: CredentialCategory.GIG_WORK, label: 'Gig Work Credential' }
-              ]}
+                { value: CredentialCategory.ACADEMIC, label: 'Academic Qualification' }, 
+                { value: CredentialCategory.SKILL, label: 'Skill Certification' }, 
+                { value: CredentialCategory.EMPLOYMENT, label: 'Employment Record' }, 
+                { value: CredentialCategory.PROFESSIONAL, label: 'Professional License' }, 
+                { value: CredentialCategory.GOVERNMENT, label: 'Government Credential' },
+                { value: CredentialCategory.GIG, label: 'Gig Work Credential' }
+              ]} 
             />
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Expiration Date (Optional)
-              </label>
-              <input
-                type="date"
-                value={expirationDate}
-                onChange={(e) => setExpirationDate(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Expiration Date (Optional)</label>
+              <input type="date" value={expirationDate} onChange={(e) => setExpirationDate(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
             </div>
           </div>
-
-          {/* Category-specific Form */}
           <div className="border-t pt-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               {selectedCategory === CredentialCategory.ACADEMIC && <GraduationCap className="w-5 h-5" />}
               {selectedCategory === CredentialCategory.SKILL && <Star className="w-5 h-5" />}
               {selectedCategory === CredentialCategory.EMPLOYMENT && <Briefcase className="w-5 h-5" />}
               {selectedCategory === CredentialCategory.PROFESSIONAL && <Award className="w-5 h-5" />}
-              {selectedCategory === CredentialCategory.GIG_WORK && <Building className="w-5 h-5" />}
+              {selectedCategory === CredentialCategory.GOVERNMENT && <Scale className="w-5 h-5" />}
+              {selectedCategory === CredentialCategory.GIG && <Globe className="w-5 h-5" />}
               {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} Details
             </h2>
             {renderCredentialForm()}
           </div>
-
           <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-6 py-3 rounded-lg hover:opacity-90 transition-opacity duration-200 disabled:opacity-50 flex items-center gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <Loader className="w-5 h-5 animate-spin" />
-                  <span>Issuing...</span>
-                </>
-              ) : (
-                <>
-                  <Shield className="w-5 h-5" />
-                  <span>Issue Verifiable Credential</span>
-                </>
-              )}
-            </button>
+            <button type="submit" disabled={isLoading} className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-6 py-3 rounded-lg hover:opacity-90 transition-opacity duration-200 disabled:opacity-50 flex items-center gap-2">{isLoading ? (<><Loader className="w-5 h-5 animate-spin" /><span>Issuing...</span></>) : (<><Shield className="w-5 h-5" /><span>Issue Verifiable Credential</span></>)}</button>
           </div>
         </form>
       </div>
