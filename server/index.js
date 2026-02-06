@@ -20,7 +20,7 @@ app.use(express.json());
 
 // --- DATABASE CONNECTION ---
 // Connect to MongoDB (Uses .env variable, falls back to your provided string)
-const mongoURI = process.env.MONGO_URI || 'mongodb+srv://admin:admin@block-9-codeversity.mxsiriu.mongodb.net/?retryWrites=true&w=majority&appName=block-9-codeversity';
+const mongoURI = process.env.MONGO_URI || 'mongodb://admin:admin@block-9-codeversity-shard-00-00.mxsiriu.mongodb.net:27017,block-9-codeversity-shard-00-01.mxsiriu.mongodb.net:27017,block-9-codeversity-shard-00-02.mxsiriu.mongodb.net:27017/?ssl=true&replicaSet=atlas-xyz-shard-0&authSource=admin&retryWrites=true&w=majority';
 
 mongoose.connect(mongoURI)
   .then(() => console.log('MongoDB Connected'))
