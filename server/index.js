@@ -5,28 +5,26 @@ const cors = require('cors');
 
 const app = express();
 
-// --- CRITICAL FIX: CORS CONFIGURATION ---
-// This allows your Netlify frontend to talk to this backend.
+// --- CORS CONFIGURATION ---
 app.use(cors({
   origin: [
     "http://localhost:5173",                      // Allow local development
     "https://block-9-codeversity.netlify.app"     // Allow your deployed Netlify site
   ],
   methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
-  credentials: true // Allow cookies/headers if needed
+  credentials: true
 }));
 
 app.use(express.json());
 
 // --- DATABASE CONNECTION ---
-// Connect to MongoDB (Uses .env variable, falls back to your provided string)
 const mongoURI = process.env.MONGO_URI || 'mongodb+srv://admin:admin@block-9-codeversity.mxsiriu.mongodb.net/?appName=Block-9-Codeversity';
 
 mongoose.connect(mongoURI)
   .then(() => console.log('MongoDB Connected'))
   .catch(err => console.error('MongoDB Connection Error:', err));
 
-// --- SCHEMA DEFINITION ---
+// --- SCHEMA DEFINITION (UPDATED) ---
 const CertificateSchema = new mongoose.Schema({
   id: { type: String, unique: true },
   name: String,
@@ -34,6 +32,12 @@ const CertificateSchema = new mongoose.Schema({
   issuerAddress: { type: String, lowercase: true },
   issuerName: String,
   certificateType: String,
+  
+  // --- ADDED THESE FIELDS ---
+  category: String,      // Stores 'academic', 'skill', 'government', etc.
+  subCategory: String,   // Stores 'Degree Certificate', 'Gig Work Record', etc.
+  // --------------------------
+
   issueDate: Date,
   expiryDate: Date,
   metadata: Object,
@@ -49,7 +53,20 @@ const CertificateModel = mongoose.model('Certificate', CertificateSchema);
 
 // --- API ROUTES ---
 
-// 1. Get Certificates for a Wallet Address (Session Sync)
+app.get('/api/certificate/:id', async (req, res) => {
+  try {
+    const certificate = await CertificateModel.findOne({ id: req.params.id });
+    if (!certificate) {
+      return res.status(404).json({ error: 'Certificate not found' });
+    }
+    res.json(certificate);
+  } catch (err) {
+    console.error('Error fetching certificate:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 1. Get Certificates for a Wallet Address
 app.get('/api/certificates/:address', async (req, res) => {
   if (!req.params.address) {
     return res.status(400).json({ error: 'Address is required' });
