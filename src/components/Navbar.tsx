@@ -1,151 +1,115 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Award, FileCheck, Wallet, Home, LogOut, LogIn } from 'lucide-react';
+import { Menu, X, Award } from 'lucide-react'; 
 import { useWallet } from '../context/WalletContext';
 import { truncateAddress } from '../utils/helpers';
 
 const Navbar: React.FC = () => {
   const location = useLocation();
   const { walletAddress, isConnected, connectWallet, disconnectWallet, isIssuer } = useWallet();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
-  
+  const isActive = (path: string) => location.pathname === path;
+
+  // Reusable Nav Link Component
+  const NavLink = ({ to, label }: { to: string, label: string }) => (
+    <Link
+      to={to}
+      // UPDATED: Changed 'text-sm' to 'text-base' for larger links
+      className={`text-base tracking-wide transition-colors duration-200 ${
+        isActive(to) 
+          ? 'text-primary font-medium' 
+          : 'text-neutral-500 hover:text-primary'
+      }`}
+    >
+      {label}
+    </Link>
+  );
+
   return (
-    <nav className="bg-white/80 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Award className="w-8 h-8 text-indigo-600" />
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
-              OpenCred
-            </h1>
-          </div>
+    <nav className="bg-white border-b border-gray-100 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-20 items-center">
           
-          <div className="hidden md:flex items-center space-x-1">
-            <Link
-              to="/"
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
-                isActive('/') 
-                  ? 'bg-indigo-50 text-indigo-600' 
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <Home size={18} />
-              <span>Dashboard</span>
-            </Link>
-            
-            {isIssuer && (
-              <Link
-                to="/issue"
-                className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
-                  isActive('/issue') 
-                    ? 'bg-indigo-50 text-indigo-600' 
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <FileCheck size={18} />
-                <span>Issue</span>
-              </Link>
-            )}
-            
-            <Link
-              to="/verify"
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
-                isActive('/verify') 
-                  ? 'bg-indigo-50 text-indigo-600' 
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <FileCheck size={18} />
-              <span>Verify</span>
-            </Link>
-            
-            <Link
-              to="/wallet"
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
-                isActive('/wallet') 
-                  ? 'bg-indigo-50 text-indigo-600' 
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <Wallet size={18} />
-              <span>My Certificates</span>
+          {/* Logo Section */}
+          <div className="flex-shrink-0 flex items-center gap-2">
+            <Link to="/" className="flex items-center gap-3 group">
+              {/* UPDATED: Icon size w-6/h-6 -> w-7/h-7 */}
+              <Award className="w-7 h-7 text-primary" strokeWidth={1.5} />
+              {/* UPDATED: Text size text-xl -> text-2xl */}
+              <span className="text-2xl font-light tracking-tight text-neutral-900 group-hover:text-primary transition-colors">
+                Open<span className="font-normal">Cred</span>
+              </span>
             </Link>
           </div>
           
-          <div>
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-8">
+            <NavLink to="/" label="Dashboard" />
+            {isIssuer && <NavLink to="/issue" label="Issue" />}
+            <NavLink to="/verify" label="Verify" />
+            <NavLink to="/wallet" label="My Certificates" />
+          </div>
+          
+          {/* Action Button */}
+          <div className="hidden md:flex items-center">
             {isConnected ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600 bg-gray-100 py-1 px-3 rounded-full">
+              <div className="flex items-center gap-4">
+                {/* UPDATED: Address text text-xs -> text-sm */}
+                <span className="text-sm font-mono text-neutral-500 border border-gray-200 px-3 py-1 rounded-sm">
                   {truncateAddress(walletAddress)}
                 </span>
+                {/* UPDATED: Disconnect text text-sm -> text-base */}
                 <button
                   onClick={disconnectWallet}
-                  className="flex items-center gap-2 bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors duration-200"
+                  className="text-base text-neutral-500 hover:text-red-600 transition-colors"
                 >
-                  <LogOut size={18} />
-                  <span className="hidden sm:inline">Disconnect</span>
+                  Disconnect
                 </button>
               </div>
             ) : (
               <button
                 onClick={connectWallet}
-                className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-6 py-2.5 rounded-full hover:opacity-90 transition-opacity duration-200 shadow-sm"
+                // UPDATED: Button text text-sm -> text-base
+                className="bg-primary hover:bg-primary-hover text-white text-base font-medium px-6 py-2.5 transition-all duration-300 rounded-sm"
               >
-                <LogIn size={18} />
-                <span>Connect Wallet</span>
+                Connect Wallet
               </button>
             )}
           </div>
-        </div>
-        
-        {/* Mobile Navigation */}
-        <div className="md:hidden flex justify-between mt-4 bg-gray-50 rounded-lg p-1">
-          <Link
-            to="/"
-            className={`flex-1 flex flex-col items-center py-2 rounded-md ${
-              isActive('/') ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-600'
-            }`}
-          >
-            <Home size={20} />
-            <span className="text-xs mt-1">Home</span>
-          </Link>
-          
-          {isIssuer && (
-            <Link
-              to="/issue"
-              className={`flex-1 flex flex-col items-center py-2 rounded-md ${
-                isActive('/issue') ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-600'
-              }`}
+
+          {/* Mobile Menu Button */}
+          <div className="md:hidden flex items-center">
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="text-neutral-900 hover:text-primary p-2"
             >
-              <FileCheck size={20} />
-              <span className="text-xs mt-1">Issue</span>
-            </Link>
-          )}
-          
-          <Link
-            to="/verify"
-            className={`flex-1 flex flex-col items-center py-2 rounded-md ${
-              isActive('/verify') ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-600'
-            }`}
-          >
-            <FileCheck size={20} />
-            <span className="text-xs mt-1">Verify</span>
-          </Link>
-          
-          <Link
-            to="/wallet"
-            className={`flex-1 flex flex-col items-center py-2 rounded-md ${
-              isActive('/wallet') ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-600'
-            }`}
-          >
-            <Wallet size={20} />
-            <span className="text-xs mt-1">Wallet</span>
-          </Link>
+              {isMobileMenuOpen ? <X size={28} strokeWidth={1.5} /> : <Menu size={28} strokeWidth={1.5} />}
+            </button>
+          </div>
         </div>
       </div>
+      
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden bg-white border-b border-gray-100 absolute w-full left-0 top-20 py-4 px-4 flex flex-col space-y-4 shadow-sm">
+          <NavLink to="/" label="Dashboard" />
+          {isIssuer && <NavLink to="/issue" label="Issue" />}
+          <NavLink to="/verify" label="Verify" />
+          <NavLink to="/wallet" label="Wallet" />
+          <div className="pt-4 border-t border-gray-100">
+             {isConnected ? (
+               <button onClick={disconnectWallet} className="w-full text-left text-base text-red-600 py-2">
+                 Disconnect ({truncateAddress(walletAddress)})
+               </button>
+             ) : (
+               <button onClick={connectWallet} className="w-full bg-primary text-white py-3 text-base font-medium">
+                 Connect Wallet
+               </button>
+             )}
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

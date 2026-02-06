@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Search, FileCheck, X, Shield, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Search, FileCheck, X, Shield, AlertTriangle, ExternalLink, ArrowRight, QrCode, CheckCircle } from 'lucide-react';
 import { useCertificates } from '../context/CertificateContext';
 import Certificate from '../components/Certificate';
 import toast from 'react-hot-toast';
@@ -23,11 +23,9 @@ const VerifyCertificate: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
-  // Check for certificate ID in URL query params
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const id = params.get('id');
-    
     if (id) {
       setCertificateId(id);
       handleVerify(id);
@@ -39,23 +37,14 @@ const VerifyCertificate: React.FC = () => {
       toast.error('Please enter a certificate ID');
       return;
     }
-    
     try {
       const result = await verifyCertificate(id);
-      
-      setVerificationResult({
-        ...result,
-        verified: true
-      });
-      
-      // Update URL with certificate ID for sharing
+      setVerificationResult({ ...result, verified: true });
       navigate(`/verify?id=${id}`, { replace: true });
       
-      if (result.isValid) {
-        toast.success('Certificate verified successfully!');
-      } else {
-        toast.error(result.message || 'Certificate verification failed');
-      }
+      if (result.isValid) toast.success('Verified successfully');
+      else toast.error(result.message || 'Verification failed');
+      
     } catch (error: any) {
       setVerificationResult({
         isValid: false,
@@ -63,197 +52,176 @@ const VerifyCertificate: React.FC = () => {
         message: error.message || 'Verification failed',
         verified: true
       });
-      toast.error(error.message || 'Verification failed');
+      toast.error(error.message);
     }
   };
   
   const resetVerification = () => {
-    setVerificationResult({
-      isValid: false,
-      certificate: null,
-      message: '',
-      verified: false
-    });
+    setVerificationResult({ isValid: false, certificate: null, message: '', verified: false });
     setCertificateId('');
     navigate('/verify', { replace: true });
   };
   
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 mb-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">Verify Certificate</h1>
-        
-        {!verificationResult.verified ? (
-          // --- SEARCH STATE ---
-          <div className="space-y-6">
-            <p className="text-gray-600">
-              Enter a certificate ID to verify its authenticity on the blockchain.
-            </p>
+    <div className="min-h-[calc(100vh-80px)] flex flex-col relative bg-white overflow-hidden">
+      {/* Background Grid */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#f8f8f8_1px,transparent_1px),linear-gradient(to_bottom,#f8f8f8_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none z-0"></div>
+
+      {!verificationResult.verified ? (
+        // --- HERO SEARCH STATE ---
+        <div className="flex-1 flex flex-col items-center justify-start pt-24 px-4 relative z-10">
+          
+          <div className="max-w-3xl w-full mx-auto text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white rounded-full mb-8 border border-gray-100 shadow-sm">
+              <Shield className="w-3.5 h-3.5 text-neutral-400" strokeWidth={2} />
+              <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Immutable</span>
+            </div>
             
-            <div className="flex gap-3">
+            <h1 className="text-6xl md:text-7xl font-semibold text-neutral-900 mb-6 tracking-tighter">
+              Verify Authenticity.
+            </h1>
+            <p className="text-xl text-neutral-500 max-w-xl mx-auto font-light leading-relaxed">
+              Instant, trustless verification. Enter a unique ID to validate the integrity of any OpenCred certificate.
+            </p>
+          </div>
+          
+          {/* SEARCH BOX */}
+          <div className="max-w-2xl w-full mx-auto bg-white p-2 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-shadow duration-300">
+            <div className="relative flex items-center">
+              <Search className="absolute left-5 text-neutral-300 w-6 h-6" strokeWidth={1.5} />
               <input
                 type="text"
                 value={certificateId}
                 onChange={(e) => setCertificateId(e.target.value)}
-                placeholder="Enter certificate ID (e.g., 12345678-1234...)"
-                className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Paste Certificate ID (e.g. d2cfe4d4...)"
+                className="w-full pl-14 pr-36 py-4 bg-transparent border-none text-xl text-neutral-900 placeholder-neutral-300 focus:ring-0 font-light"
               />
               <button
                 onClick={() => handleVerify()}
                 disabled={isLoading || !certificateId}
-                className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-6 py-3 rounded-lg hover:opacity-90 transition-opacity duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="absolute right-1.5 bg-primary hover:bg-primary-hover text-white px-8 py-3.5 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg translate-y-0 active:translate-y-0.5"
               >
-                <Search size={20} />
-                <span>Verify</span>
+                {isLoading ? 'Scanning...' : 'Verify'}
               </button>
-            </div>
-            
-            <div className="text-sm text-gray-500">
-              <p>Certificate ID should be in UUID format (e.g., d2cfe4d4-36c7...)</p>
-            </div>
-            
-            <div className="text-center py-8">
-              <div className="inline-block p-6 bg-indigo-50 rounded-full mb-4">
-                <Shield className="w-16 h-16 text-indigo-400" />
-              </div>
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">Blockchain Verification</h2>
-              <p className="text-gray-600 max-w-md mx-auto">
-                Our platform uses blockchain technology to ensure certificates are tamper-proof and can be verified by anyone, anytime.
-              </p>
             </div>
           </div>
-        ) : (
-          // --- RESULT STATE ---
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-800">Verification Result</h2>
-              <button
+          
+          {/* HOW IT WORKS - Redesigned to match screenshot */}
+          <div className="max-w-6xl w-full mx-auto mt-32">
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
+               
+               {/* Step 1 */}
+               <div className="flex flex-col items-center group">
+                  <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mb-6 group-hover:bg-orange-100 transition-colors duration-300">
+                    <QrCode className="w-8 h-8 text-primary" strokeWidth={1.2} />
+                  </div>
+                  <h3 className="text-lg font-bold text-neutral-900 mb-3">Locate ID</h3>
+                  <p className="text-sm text-neutral-500 leading-relaxed max-w-[260px]">
+                    Find the UUID at the bottom of your certificate or within the digital link.
+                  </p>
+               </div>
+
+               {/* Step 2 */}
+               <div className="flex flex-col items-center group">
+                  <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mb-6 group-hover:bg-orange-100 transition-colors duration-300">
+                    <Search className="w-8 h-8 text-primary" strokeWidth={1.2} />
+                  </div>
+                  <h3 className="text-lg font-bold text-neutral-900 mb-3">Input & Search</h3>
+                  <p className="text-sm text-neutral-500 leading-relaxed max-w-[260px]">
+                    System queries the blockchain ledger instantly for a matching record.
+                  </p>
+               </div>
+
+               {/* Step 3 */}
+               <div className="flex flex-col items-center group">
+                  <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mb-6 group-hover:bg-orange-100 transition-colors duration-300">
+                    <FileCheck className="w-8 h-8 text-primary" strokeWidth={1.2} />
+                  </div>
+                  <h3 className="text-lg font-bold text-neutral-900 mb-3">Validate</h3>
+                  <p className="text-sm text-neutral-500 leading-relaxed max-w-[260px]">
+                    View cryptographic proofs and issuer signatures to confirm integrity.
+                  </p>
+               </div>
+
+             </div>
+          </div>
+        </div>
+      ) : (
+        // --- RESULT STATE (Unchanged) ---
+        <div className="max-w-4xl mx-auto w-full px-4 py-16 relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          
+          <div className="flex justify-between items-end mb-8 border-b border-neutral-200 pb-6">
+            <div>
+              <button 
                 onClick={resetVerification}
-                className="text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                className="text-neutral-400 hover:text-neutral-900 text-sm font-medium mb-4 flex items-center gap-2 transition-colors"
               >
-                <X size={18} />
-                <span>Reset</span>
+                <ArrowRight className="rotate-180 w-4 h-4" /> Back to Search
               </button>
+              <h2 className="text-3xl font-medium text-neutral-900">Verification Result</h2>
             </div>
             
-            {/* Status Banner */}
-            <div className={`p-6 rounded-lg ${
-              verificationResult.isValid 
-                ? 'bg-emerald-50 border border-emerald-100' 
-                : 'bg-red-50 border border-red-100'
+            <div className={`flex items-center gap-3 px-4 py-2 rounded-full border ${
+               verificationResult.isValid 
+                 ? 'bg-emerald-50 border-emerald-100 text-emerald-700' 
+                 : 'bg-red-50 border-red-100 text-red-700'
             }`}>
-              <div className="flex items-start gap-4">
-                <div className={`p-3 rounded-full ${
-                  verificationResult.isValid ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
-                }`}>
-                  {verificationResult.isValid ? (
-                    <FileCheck size={24} />
-                  ) : (
-                    <AlertTriangle size={24} />
-                  )}
+              {verificationResult.isValid ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
+              <span className="font-medium text-sm">
+                {verificationResult.isValid ? 'Authentic Document' : 'Invalid Document'}
+              </span>
+            </div>
+          </div>
+          
+          {verificationResult.certificate && (
+            <div className="bg-white border border-neutral-200 shadow-sm rounded-lg overflow-hidden">
+              <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-neutral-100 bg-white">
+                <div className="p-6">
+                  <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Recipient</h4>
+                  <p className="text-neutral-900 font-medium text-lg">{verificationResult.certificate.name}</p>
                 </div>
-                <div>
-                  <h3 className={`text-lg font-semibold ${
-                    verificationResult.isValid ? 'text-emerald-800' : 'text-red-800'
-                  }`}>
-                    {verificationResult.isValid ? 'Valid Certificate' : 'Invalid Certificate'}
-                  </h3>
-                  <p className={`text-sm ${
-                    verificationResult.isValid ? 'text-emerald-600' : 'text-red-600'
-                  }`}>
-                    {verificationResult.message}
+                
+                <div className="p-6">
+                  <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Issue Date</h4>
+                  <p className="text-neutral-900">
+                    {new Date(verificationResult.certificate.issueDate).toLocaleDateString()}
                   </p>
                 </div>
+                
+                <div className="p-6">
+                   <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Type</h4>
+                   <p className="text-neutral-900 capitalize">
+                      {verificationResult.certificate.subCategory || 'Standard'}
+                    </p>
+                </div>
+                
+                 <div className="p-6 bg-neutral-50 flex flex-col justify-center">
+                   <a 
+                      href={`https://sepolia.etherscan.io/tx/${verificationResult.certificate.blockchainHash}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:text-primary-hover text-sm font-medium flex items-center gap-2 group"
+                    >
+                      View on Chain <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                    </a>
+                    <span className="text-[10px] text-neutral-400 font-mono mt-1 break-all line-clamp-1">
+                      {verificationResult.certificate.blockchainHash}
+                    </span>
+                </div>
+              </div>
+
+              <div className="border-t border-neutral-100 bg-neutral-50/50 p-8 flex justify-center">
+                <div className="relative shadow-xl shadow-neutral-200/50 transform transition-transform hover:scale-[1.01] duration-300 bg-white">
+                   <div className="origin-top scale-[0.6] md:scale-[0.75]">
+                      <Certificate certificate={verificationResult.certificate} showDetails={true} />
+                   </div>
+                   <div className="h-[400px] md:h-[500px] w-[600px] md:w-[800px] hidden"></div> 
+                </div>
               </div>
             </div>
-            
-            {verificationResult.certificate && (
-              <div className="mt-8">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Certificate Details</h3>
-                
-                {/* Visual Certificate Preview */}
-                <div className="bg-white rounded-xl p-4 shadow-inner overflow-hidden border border-gray-200">
-                  <div className="flex justify-center transform scale-[0.45] origin-top h-[300px]">
-                    <Certificate certificate={verificationResult.certificate} showDetails={true} />
-                  </div>
-                </div>
-                
-                {/* Detailed Data Grid */}
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                    <h4 className="font-medium text-gray-500 text-sm uppercase mb-1">Recipient</h4>
-                    <p className="text-gray-900 font-semibold">{verificationResult.certificate.name}</p>
-                  </div>
-                  
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                    <h4 className="font-medium text-gray-500 text-sm uppercase mb-1">Issuer</h4>
-                    <p className="text-gray-900 font-semibold">{verificationResult.certificate.issuerName}</p>
-                  </div>
-                  
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                    <h4 className="font-medium text-gray-500 text-sm uppercase mb-1">Issue Date</h4>
-                    <p className="text-gray-900">
-                      {new Date(verificationResult.certificate.issueDate).toLocaleDateString(undefined, {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </p>
-                  </div>
-                  
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                    <h4 className="font-medium text-gray-500 text-sm uppercase mb-1">Category</h4>
-                    <p className="text-gray-900 capitalize">
-                      {/* FIX: Check both naming conventions to ensure data display */}
-                      {verificationResult.certificate.category || 
-                       verificationResult.certificate.certificateCategory || 
-                       'Standard'}
-                    </p>
-                  </div>
-
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                    <h4 className="font-medium text-gray-500 text-sm uppercase mb-1">Sub-Category</h4>
-                    <p className="text-gray-900 capitalize">
-                      {/* FIX: Check both naming conventions */}
-                      {verificationResult.certificate.subCategory || 
-                       verificationResult.certificate.certificateSubCategory || 
-                       verificationResult.certificate.certificateType || 
-                       'General'}
-                    </p>
-                  </div>
-
-                  {verificationResult.certificate.expiryDate && (
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                      <h4 className="font-medium text-gray-500 text-sm uppercase mb-1">Expiry Date</h4>
-                      <p className="text-gray-900">
-                        {new Date(verificationResult.certificate.expiryDate).toLocaleDateString()}
-                      </p>
-                    </div>
-                  )}
-                  
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 md:col-span-2">
-                    <h4 className="font-medium text-gray-500 text-sm uppercase mb-1 flex items-center gap-2">
-                      Blockchain Hash
-                      <a 
-                        href={`https://sepolia.etherscan.io/tx/${verificationResult.certificate.blockchainHash}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-indigo-600 hover:text-indigo-800"
-                        title="View on Etherscan"
-                      >
-                        <ExternalLink size={14} />
-                      </a>
-                    </h4>
-                    <p className="text-gray-600 font-mono text-xs break-all bg-white p-2 rounded border border-gray-200">
-                      {verificationResult.certificate.blockchainHash || "Pending on-chain anchor..."}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
