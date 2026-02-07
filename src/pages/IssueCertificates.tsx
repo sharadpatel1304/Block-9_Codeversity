@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { 
   Upload, FileCheck, X, Plus, Loader, Shield, GraduationCap, 
   Award, Briefcase, Globe, ChevronDown, Info, FileSpreadsheet, 
-  CheckCircle2, BookOpen, Fingerprint 
+  CheckCircle2, BookOpen, Fingerprint, Wallet 
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useWallet } from '../context/WalletContext';
@@ -11,27 +11,32 @@ import { processExcelFile } from '../utils/helpers';
 import toast from 'react-hot-toast';
 import { useLanguage } from '../context/LanguageContext';
 
-// --- DID Configuration ---
-const CATEGORY_CONFIG: Record<string, { did: string; org: string }> = {
+// --- 1. CONFIGURATION: PASTE YOUR WALLET ADDRESSES HERE ---
+const CATEGORY_WALLETS: Record<string, { did: string; org: string; address: string }> = {
   academic: { 
     did: 'did:web:academy.opencred.org', 
-    org: 'OpenCred Academic Alliance' 
+    org: 'OpenCred Academic Alliance',
+    address: '0x95f648376BCac4f06bDbF68C77B7d253dC6b0515' // <--- PASTE ACADEMIC WALLET ADDRESS HERE
   },
   skill: { 
     did: 'did:web:skills.opencred.org', 
-    org: 'OpenCred Skill Registry' 
+    org: 'OpenCred Skill Registry',
+    address: '0x46Bc14696a69d70d2C9085227E6565fc9Daf7F2e' // <--- PASTE SKILL WALLET ADDRESS HERE
   },
   employment: { 
     did: 'did:web:work.opencred.org', 
-    org: 'OpenCred Employment Verification' 
+    org: 'OpenCred Employment Verification',
+    address: '0x2b287Cfa405b079Afe5Ab468112C27Bf4ccEbfE9' // <--- PASTE EMPLOYMENT WALLET ADDRESS HERE
   },
   government: { 
     did: 'did:gov:opencred:id', 
-    org: 'Government Authority' 
+    org: 'Government Authority',
+    address: '0x0148dEA9CeBD74f7639B553e4cD8d144D0441f68' // <--- PASTE GOVERNMENT WALLET ADDRESS HERE
   },
   gig: { 
     did: 'did:web:gig.opencred.org', 
-    org: 'Decentralized Gig Platform' 
+    org: 'Decentralized Gig Platform',
+    address: '0xfbA0B31735422de1B2Ee7d76089979a7b1910e36' // <--- PASTE GIG WALLET ADDRESS HERE
   }
 };
 
@@ -55,7 +60,8 @@ interface FormData {
     eventLocation?: string;
     eventDescription?: string;
     achievements: string[];
-    issuerDid?: string; // Added DID to metadata
+    issuerDid?: string;
+    operatorAddress?: string; // Tracks the Admin who performed the action
     [key: string]: any;
   };
 }
@@ -80,7 +86,8 @@ const initialFormState: FormData = {
     eventLocation: '',
     eventDescription: '',
     achievements: [],
-    issuerDid: ''
+    issuerDid: '',
+    operatorAddress: ''
   }
 };
 
@@ -284,9 +291,9 @@ const IssueCertificates: React.FC = () => {
 
   // --- Handlers ---
 
-  // Handle Category Change: Update Category AND Auto-fill Organization/DID
+  // Handle Category Change: Update Category AND Auto-fill Organization/DID info
   const handleCategoryChange = (val: string) => {
-    const config = CATEGORY_CONFIG[val];
+    const config = CATEGORY_WALLETS[val];
     setFormData(prev => ({
       ...prev,
       certificateCategory: val,
@@ -304,13 +311,20 @@ const IssueCertificates: React.FC = () => {
     if (!isConnected || !isIssuer) { toast.error('Please connect authorized wallet'); return; }
     if (!formData.certificateCategory) { toast.error('Select a Credential Category'); return; }
 
+    const config = CATEGORY_WALLETS[formData.certificateCategory];
+    
+    // Safety check for wallet config
+    if (!config || !config.address) {
+      toast.error(`Wallet address not configured for ${formData.certificateCategory}`);
+      return;
+    }
+
     try {
-      const config = CATEGORY_CONFIG[formData.certificateCategory];
-      
       await issueCertificate({
         ...formData,
-        issuerAddress: walletAddress,
-        issuerName: formData.metadata.organization || config.org || 'Authorized Issuer', // Use the specific DID Org Name
+        // PRIMARY CHANGE: Set Issuer to the Category Wallet so they see it
+        issuerAddress: config.address, 
+        issuerName: formData.metadata.organization || config.org || 'Authorized Issuer', 
         issueDate: new Date(formData.issueDate),
         expiryDate: formData.expiryDate ? new Date(formData.expiryDate) : undefined,
         // @ts-ignore
@@ -319,11 +333,12 @@ const IssueCertificates: React.FC = () => {
         subCategory: formData.certificateSubCategory,
         metadata: {
           ...formData.metadata,
-          issuerDid: config ? config.did : '' // Ensure DID is in metadata
+          issuerDid: config.did,
+          operatorAddress: walletAddress // Record Admin as the actual signer
         }
       } as any);
 
-      toast.success('Certificate issued successfully!');
+      toast.success(`Issued for ${config.org}`);
       setFormData(initialFormState);
       setListInput('');
     } catch (error: any) {
@@ -344,21 +359,27 @@ const IssueCertificates: React.FC = () => {
     if (!selectedFile) { toast.error('Select a file first'); return; }
     if (!formData.certificateCategory) { toast.error('Select a category'); return; }
 
+    const config = CATEGORY_WALLETS[formData.certificateCategory];
+    
+    if (!config || !config.address) {
+      toast.error(`Wallet address not configured for ${formData.certificateCategory}`);
+      return;
+    }
+
     try {
       const data = await processExcelFile(selectedFile);
       const isValidData = data.every((row: any) => row.name && row.rollNo && row.walletAddress && ethers.isAddress(row.walletAddress));
 
       if (!isValidData) { toast.error('Invalid Excel format'); return; }
 
-      const config = CATEGORY_CONFIG[formData.certificateCategory];
-
       await issueBulkCertificates(
         data.map((row: any) => ({
           name: row.name,
           recipientAddress: row.walletAddress,
           rollNo: row.rollNo,
-          issuerAddress: walletAddress,
-          issuerName: formData.metadata.organization || config.org || 'Authorized Issuer', // Use specific Org Name
+          // PRIMARY CHANGE: Set Issuer to the Category Wallet
+          issuerAddress: config.address, 
+          issuerName: formData.metadata.organization || config.org || 'Authorized Issuer', 
           certificateType: formData.certificateType,
           // @ts-ignore
           category: formData.certificateCategory,
@@ -368,11 +389,12 @@ const IssueCertificates: React.FC = () => {
           metadata: { 
             ...formData.metadata, 
             course: row.course || formData.metadata.course,
-            issuerDid: config ? config.did : '' // Inject DID into bulk records
+            issuerDid: config.did,
+            operatorAddress: walletAddress // Record Admin
           }
         } as any))
       );
-      toast.success('Bulk issue successful');
+      toast.success(`Bulk issue successful for ${config.org}`);
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (error: any) {
@@ -472,7 +494,7 @@ const IssueCertificates: React.FC = () => {
               <Select
                 label={t('iss_cat')}
                 value={formData.certificateCategory}
-                onChange={handleCategoryChange} // Updated to use new handler
+                onChange={handleCategoryChange} 
                 options={Object.entries(credentialCategories).map(([k, v]) => ({ value: k, label: v.label }))}
               />
                <Select
@@ -559,13 +581,21 @@ const IssueCertificates: React.FC = () => {
                       options={Object.entries(credentialCategories).map(([k, v]) => ({ value: k, label: v.label }))}
                     />
                     
-                    {/* DID Display Indicator */}
-                    {formData.certificateCategory && CATEGORY_CONFIG[formData.certificateCategory] && (
-                      <div className="flex items-center gap-2 bg-blue-50/50 p-3 rounded-lg border border-blue-100 text-xs text-blue-700 animate-in fade-in">
-                        <Fingerprint size={14} />
-                        <span className="font-mono">
-                          Issuer DID: {CATEGORY_CONFIG[formData.certificateCategory].did}
-                        </span>
+                    {/* DID Display Indicator - Visual Confirmation for Admin */}
+                    {formData.certificateCategory && CATEGORY_WALLETS[formData.certificateCategory] && (
+                      <div className="flex flex-col gap-2 bg-blue-50/50 p-4 rounded-lg border border-blue-100 animate-in fade-in">
+                        <div className="flex items-center gap-2 text-xs text-blue-700 font-bold uppercase tracking-wide">
+                           <Fingerprint size={12} /> Issuing as:
+                        </div>
+                        <div className="text-sm font-medium text-neutral-900">
+                          {CATEGORY_WALLETS[formData.certificateCategory].org}
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-neutral-500 font-mono mt-1 pt-2 border-t border-blue-100/50">
+                           <Wallet size={10} /> 
+                           {CATEGORY_WALLETS[formData.certificateCategory].address 
+                             ? `${CATEGORY_WALLETS[formData.certificateCategory].address.slice(0, 10)}...` 
+                             : 'Wallet not configured'}
+                        </div>
                       </div>
                     )}
 
@@ -631,7 +661,7 @@ const IssueCertificates: React.FC = () => {
                           <Input
                             value={formData.metadata.organization}
                             onChange={(e) => setFormData(p => ({ ...p, metadata: { ...p.metadata, organization: e.target.value } }))}
-                            placeholder="Organization Name" // Will auto-fill
+                            placeholder="Organization Name" 
                           />
                         </div>
                         <div>
