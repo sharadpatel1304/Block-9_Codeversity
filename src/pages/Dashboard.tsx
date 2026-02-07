@@ -1,19 +1,236 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo} from 'react';
 import { Link } from 'react-router-dom';
-import { FileCheck, Award, Wallet, Upload, ArrowRight, X, Shield, ChevronRight } from 'lucide-react';
+import { 
+  FileCheck, Award, Wallet, Upload, ArrowRight, X, 
+  ChevronRight, HelpCircle, ChevronLeft 
+} from 'lucide-react';
 import { useWallet } from '../context/WalletContext';
 import { useCertificates, getCertificateStatus } from '../context/CertificateContext';
+
+// --- Types for the Tour ---
+type TourStep = {
+  id: string; 
+  title: string;
+  description: string;
+  position: 'bottom' | 'top' | 'left' | 'right' | 'center';
+};
 
 const Dashboard: React.FC = () => {
   const { isConnected, isIssuer } = useWallet();
   const { issuedCertificates, receivedCertificates } = useCertificates();
   
-  // State for the Welcome Guide
-  const [showGuide, setShowGuide] = useState(true);
+  // --- Tour State ---
+  const [runTour, setRunTour] = useState(false);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   
-  // Reverted to the Clean/Elegant Card Style (No heavy orange background)
-  const ActionCard = ({ to, icon: Icon, title, description }: { to: string, icon: any, title: string, description: string }) => (
+  // State for the "Spotlight" and "Tooltip" positions
+  const [spotlightStyle, setSpotlightStyle] = useState<React.CSSProperties>({ display: 'none' });
+  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({ opacity: 0 });
+  const [isScrolling, setIsScrolling] = useState(false);
+
+  // --- IMPROVED CONTENT: Detailed Feature Breakdown ---
+  const steps = useMemo(() => {
+    const tourSteps: TourStep[] = [
+      {
+        id: 'hero-section',
+        title: 'The OpenCred Command Center',
+        description: 'Welcome to your decentralized identity hub. This dashboard gives you a complete overview of your blockchain interactions. From here, you can navigate to issue, manage, or verify credentials with zero third-party reliance.',
+        position: 'center'
+      },
+      {
+        id: 'action-verify',
+        title: 'Universal Verification Engine',
+        description: 'Trust, but verify. Use this tool to validate any credential instantly. Simply paste a Certificate ID to query the live blockchain ledger. You will see the issuer signature, issuance date, and current validity status (Valid, Expired, or Revoked).',
+        position: 'bottom'
+      },
+      {
+        id: 'action-wallet',
+        title: 'Your Credential Vault',
+        description: 'This is the home for your professional identity. Access your wallet to view all certificates earned by you. Inside, you can download high-res PDFs, generate public share links for LinkedIn, and manage your decentralized profile.',
+        position: 'bottom'
+      }
+    ];
+
+    // Feature Explanation for Issuers
+    if (isIssuer) {
+      tourSteps.splice(1, 0, {
+        id: 'action-issue',
+        title: 'Issuer Portal & Bulk Minting',
+        description: 'Authorized organizations use this portal to deploy credentials. You can issue single certificates via a simple form or use the Bulk Upload feature (Excel/CSV) to mint hundreds of credentials in one transaction. All actions are cryptographically signed.',
+        position: 'bottom'
+      });
+    }
+
+    // Feature Explanation for Activity Feed
+    if (isConnected) {
+      tourSteps.push({
+        id: 'activity-feed',
+        title: 'Real-Time Ledger Activity',
+        description: 'Track your history at a glance. This feed updates automatically whenever you issue or receive a credential. It provides a quick status check—green for valid, amber for expired—and links directly to the detailed certificate view.',
+        position: 'top'
+      });
+    }
+
+    return tourSteps;
+  }, [isIssuer, isConnected]);
+
+  // --- Auto-Start Check ---
+  useEffect(() => {
+    const hasSeenGuide = localStorage.getItem('opencred_tour_completed');
+    if (!hasSeenGuide) {
+      const timer = setTimeout(() => setRunTour(true), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  // --- The Positioning Engine (Robust Version) ---
+  const updatePositions = () => {
+    if (!runTour) return;
+    
+    const step = steps[currentStepIndex];
+    if (!step) return;
+
+    // Center Modal logic
+    if (step.position === 'center') {
+      setSpotlightStyle({
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(23, 23, 23, 0.85)', // Dark backdrop
+        zIndex: 50,
+        transition: 'all 0.4s ease',
+      });
+      setTooltipStyle({
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: 51,
+        opacity: 1,
+        transition: 'all 0.3s ease',
+      });
+      return;
+    }
+
+    // Element Highlight logic
+    const element = document.getElementById(step.id);
+    if (element) {
+      const rect = element.getBoundingClientRect();
+      const padding = 12; // Increased breathing room slightly
+
+      // 1. Set Spotlight Box (The transparent hole with giant shadow)
+      setSpotlightStyle({
+        position: 'fixed', 
+        top: rect.top - padding,
+        left: rect.left - padding,
+        width: rect.width + (padding * 2),
+        height: rect.height + (padding * 2),
+        // This shadow creates the dark overlay everywhere EXCEPT the box
+        boxShadow: '0 0 0 9999px rgba(23, 23, 23, 0.85)', 
+        borderRadius: '8px',
+        zIndex: 50,
+        pointerEvents: 'none', 
+        transition: 'all 0.4s ease-out',
+      });
+
+      // 2. Set Tooltip Box
+      let top = 0;
+      let left = 0;
+      const tooltipW = 380; // Widened for better reading
+      const tooltipH = 220; 
+
+      if (step.position === 'bottom') {
+        top = rect.bottom + 24;
+        left = rect.left + (rect.width / 2) - (tooltipW / 2);
+      } else if (step.position === 'top') {
+        top = rect.top - tooltipH - 24;
+        left = rect.left + (rect.width / 2) - (tooltipW / 2);
+      }
+
+      // Edge detection 
+      if (left < 20) left = 20;
+      if (left + tooltipW > window.innerWidth) left = window.innerWidth - tooltipW - 20;
+      if (top < 20) top = 20;
+      if (top + tooltipH > window.innerHeight) top = window.innerHeight - tooltipH - 20;
+
+      setTooltipStyle({
+        position: 'fixed',
+        top: top,
+        left: left,
+        zIndex: 51,
+        opacity: 1,
+        transition: 'all 0.4s ease-out', 
+      });
+    }
+  };
+
+  // --- Step Change Effect ---
+  useLayoutEffect(() => {
+    if (!runTour) return;
+
+    const step = steps[currentStepIndex];
+    
+    if (step.position !== 'center') {
+      const element = document.getElementById(step.id);
+      if (element) {
+        setIsScrolling(true);
+        // Smooth scroll to element
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Wait for scroll to finish before locking position
+        const timer = setTimeout(() => {
+          setIsScrolling(false);
+          updatePositions();
+        }, 600); 
+        return () => clearTimeout(timer);
+      }
+    } else {
+      updatePositions();
+    }
+  }, [currentStepIndex, runTour, steps]);
+
+  // --- Listen to Resize/Scroll ---
+  useEffect(() => {
+    if (!runTour) return;
+    
+    window.addEventListener('resize', updatePositions);
+    window.addEventListener('scroll', updatePositions, { passive: true });
+    
+    return () => {
+      window.removeEventListener('resize', updatePositions);
+      window.removeEventListener('scroll', updatePositions);
+    };
+  }, [currentStepIndex, runTour]);
+
+
+  // --- Tour Actions ---
+  const handleNext = () => {
+    if (currentStepIndex < steps.length - 1) {
+      setCurrentStepIndex(prev => prev + 1);
+    } else {
+      handleCloseTour();
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex(prev => prev - 1);
+    }
+  };
+
+  const handleCloseTour = () => {
+    setRunTour(false);
+    localStorage.setItem('opencred_tour_completed', 'true');
+    setTimeout(() => setCurrentStepIndex(0), 300);
+  };
+
+  const handleManualStart = () => {
+    setRunTour(true);
+    setCurrentStepIndex(0);
+  };
+
+  const ActionCard = ({ id, to, icon: Icon, title, description }: { id?: string, to: string, icon: any, title: string, description: string }) => (
     <Link
+      id={id}
       to={to}
       className="group relative block bg-white p-8 border border-gray-200 hover:border-neutral-400 transition-all duration-300"
     >
@@ -35,10 +252,21 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 relative">
         
+        {/* Guide Button */}
+        <div className="absolute top-10 right-6 lg:right-8 z-10">
+          <button 
+            onClick={handleManualStart}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-neutral-600 text-sm hover:border-primary hover:text-primary transition-all duration-300 rounded-sm"
+          >
+            <HelpCircle size={16} />
+            <span className="font-medium">Guide</span>
+          </button>
+        </div>
+
         {/* Hero Section */}
-        <div className="mb-20 max-w-3xl">
+        <div id="hero-section" className="mb-20 max-w-3xl">
           <h1 className="text-5xl md:text-6xl font-light text-neutral-900 mb-8 tracking-tight">
             Digital Trust, <br/>
             <span className="text-primary">Simplified.</span>
@@ -52,6 +280,7 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-24">
           {isIssuer && (
             <ActionCard 
+              id="action-issue"
               to="/issue" 
               icon={Upload} 
               title="Issue Certificates" 
@@ -60,6 +289,7 @@ const Dashboard: React.FC = () => {
           )}
           
           <ActionCard 
+            id="action-verify"
             to="/verify" 
             icon={FileCheck} 
             title="Verify Authenticity" 
@@ -67,6 +297,7 @@ const Dashboard: React.FC = () => {
           />
           
           <ActionCard 
+            id="action-wallet"
             to="/wallet" 
             icon={Wallet} 
             title="Digital Wallet" 
@@ -76,7 +307,7 @@ const Dashboard: React.FC = () => {
         
         {/* Activity Feed */}
         {isConnected && (
-          <div className="border-t border-gray-100 pt-16">
+          <div id="activity-feed" className="border-t border-gray-100 pt-16">
             <div className="flex justify-between items-end mb-12">
               <h2 className="text-3xl font-light text-neutral-900">Recent Activity</h2>
               <Link to="/wallet" className="text-sm font-medium text-primary hover:text-neutral-900 transition-colors flex items-center gap-1">
@@ -85,7 +316,7 @@ const Dashboard: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-              {/* Issued Column */}
+              {/* Issued */}
               {isIssuer && issuedCertificates.length > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-widest mb-6">Issued by you</h3>
@@ -120,7 +351,7 @@ const Dashboard: React.FC = () => {
                 </div>
               )}
               
-              {/* Received Column */}
+              {/* Received */}
               {receivedCertificates.length > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-widest mb-6">Received</h3>
@@ -159,121 +390,79 @@ const Dashboard: React.FC = () => {
         )}
       </div>
 
-      {/* --- CENTRAL WELCOME GUIDE (Dark with Orange Accents) --- */}
-      {showGuide && (
-        <div className="fixed inset-0 bg-white/10 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-          
-          <div className="w-full max-w-5xl bg-neutral-900 relative overflow-hidden shadow-2xl border border-neutral-800">
-            
-            {/* The "Orange Tint" Gradient Effect */}
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+      {/* --- TOUR OVERLAY ELEMENTS --- */}
+      {runTour && (
+        <>
+          {/* 1. SPOTLIGHT BOX */}
+          <div 
+            style={spotlightStyle}
+            className={`pointer-events-none ${isScrolling ? 'opacity-0' : 'opacity-100'}`}
+          />
 
-            {/* Close Button */}
-            <button 
-              onClick={() => setShowGuide(false)}
-              className="absolute top-6 right-6 text-neutral-500 hover:text-white transition-colors p-2 z-50 cursor-pointer"
-            >
-              <X size={24} strokeWidth={1.5} />
-            </button>
-            
-            <div className="p-12 md:p-16 relative z-10">
+          {/* 2. TOOLTIP / GUIDE CONTENT */}
+          <div 
+            style={tooltipStyle}
+            className={`w-[380px] outline-none ${isScrolling ? 'opacity-0' : 'opacity-100'}`}
+          >
+            <div className="bg-neutral-900 border border-neutral-700 shadow-2xl rounded-sm overflow-hidden animate-in zoom-in-95 duration-300">
               
-              {/* Header */}
-              <div className="text-center mb-16">
-                <div className="inline-flex items-center gap-2 mb-6">
-                  <Award className="w-8 h-8 text-primary" strokeWidth={1.5} />
-                  <span className="text-2xl font-light tracking-tight text-white">
-                    Open<span className="font-normal text-primary">Cred</span>
-                  </span>
+              <div className="h-1 w-full bg-gradient-to-r from-primary to-orange-600"></div>
+              
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                   <div className="flex items-center gap-2 text-primary">
+                     <Award size={18} />
+                     <span className="text-[10px] font-bold uppercase tracking-widest">
+                       Guide {currentStepIndex + 1}/{steps.length}
+                     </span>
+                   </div>
+                   <button onClick={handleCloseTour} className="text-neutral-500 hover:text-white transition-colors">
+                     <X size={16} />
+                   </button>
                 </div>
-                <h2 className="text-4xl md:text-5xl font-light text-white mb-6">Welcome to the Dashboard</h2>
-                <p className="text-neutral-400 max-w-lg mx-auto font-light leading-relaxed">
-                  Your command center for decentralized identity. Select a module below to get started.
+
+                <h3 className="text-lg font-semibold text-white mb-2">
+                  {steps[currentStepIndex]?.title}
+                </h3>
+                <p className="text-neutral-400 text-sm leading-relaxed mb-6">
+                  {steps[currentStepIndex]?.description}
                 </p>
-              </div>
 
-              {/* Modules Grid - Dark Cards with Orange Accents */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
-                {/* Card 1: Wallet */}
-                <div className="group border border-white/5 bg-white/5 p-8 transition-all hover:bg-neutral-800 hover:border-primary/50 relative overflow-hidden">
-                  <div className="w-12 h-12 bg-neutral-800 rounded-full flex items-center justify-center mb-6 text-primary border border-white/5 group-hover:border-primary/30 transition-colors">
-                    <Wallet size={20} strokeWidth={1.5} />
-                  </div>
-                  <h3 className="text-xl font-medium text-white mb-2 group-hover:text-primary transition-colors">My Wallet</h3>
-                  <p className="text-xs font-bold text-primary/70 uppercase tracking-widest mb-4">How it works</p>
-                  <p className="text-sm text-neutral-400 leading-relaxed mb-8 min-h-[60px]">
-                    Connect your wallet to view all credentials issued to you. Download PDFs, share links, and track history.
-                  </p>
-                  <Link 
-                    to="/wallet" 
-                    className="flex items-center justify-between w-full py-3 px-4 bg-transparent border border-neutral-700 text-white text-xs font-bold uppercase tracking-wider hover:bg-primary hover:border-primary transition-all group-hover:border-primary/50"
+                <div className="flex items-center justify-between mt-2 pt-4 border-t border-neutral-800">
+                  <button 
+                    onClick={handleCloseTour}
+                    className="text-xs text-neutral-500 hover:text-white transition-colors"
                   >
-                    Open Wallet <ChevronRight size={16} />
-                  </Link>
-                </div>
-
-                {/* Card 2: Verify */}
-                <div className="group border border-white/5 bg-white/5 p-8 transition-all hover:bg-neutral-800 hover:border-primary/50 relative overflow-hidden">
-                  <div className="w-12 h-12 bg-neutral-800 rounded-full flex items-center justify-center mb-6 text-primary border border-white/5 group-hover:border-primary/30 transition-colors">
-                    <Shield size={20} strokeWidth={1.5} />
-                  </div>
-                  <h3 className="text-xl font-medium text-white mb-2 group-hover:text-primary transition-colors">Verification</h3>
-                  <p className="text-xs font-bold text-primary/70 uppercase tracking-widest mb-4">How it works</p>
-                  <p className="text-sm text-neutral-400 leading-relaxed mb-8 min-h-[60px]">
-                    Have a Certificate ID? Paste it into the engine to retrieve its blockchain hash and confirm validity.
-                  </p>
-                  <Link 
-                    to="/verify" 
-                    className="flex items-center justify-between w-full py-3 px-4 bg-transparent border border-neutral-700 text-white text-xs font-bold uppercase tracking-wider hover:bg-primary hover:text-white hover:border-primary transition-all group-hover:border-primary/50"
-                  >
-                    Start Verifying <ChevronRight size={16} />
-                  </Link>
-                </div>
-
-                {/* Card 3: Issue (Conditional) */}
-                <div className={`group border border-white/5 bg-white/5 p-8 transition-all hover:bg-neutral-800 hover:border-primary/50 relative overflow-hidden ${!isIssuer ? 'opacity-40 pointer-events-none' : ''}`}>
-                  <div className="w-12 h-12 bg-neutral-800 rounded-full flex items-center justify-center mb-6 text-primary border border-white/5 group-hover:border-primary/30 transition-colors">
-                    <Upload size={20} strokeWidth={1.5} />
-                  </div>
-                  <h3 className="text-xl font-medium text-white mb-2 group-hover:text-primary transition-colors">Issuer Portal</h3>
-                  <p className="text-xs font-bold text-primary/70 uppercase tracking-widest mb-4">How it works</p>
-                  <p className="text-sm text-neutral-400 leading-relaxed mb-8 min-h-[60px]">
-                    Authorized issuers can deploy credentials. Use the form for single entries or Excel for bulk issuance.
-                  </p>
-                  {isIssuer ? (
-                    <Link 
-                      to="/issue" 
-                      className="flex items-center justify-between w-full py-3 px-4 bg-transparent border border-neutral-700 text-white text-xs font-bold uppercase tracking-wider hover:bg-primary hover:border-primary transition-all group-hover:border-primary/50"
+                    Skip
+                  </button>
+                  
+                  <div className="flex items-center gap-2">
+                    {currentStepIndex > 0 && (
+                      <button 
+                        onClick={handlePrev}
+                        className="p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-sm transition-colors"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                    )}
+                    
+                    <button 
+                      onClick={handleNext}
+                      className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-orange-600 text-white text-xs font-bold uppercase tracking-wider transition-colors rounded-sm"
                     >
-                      Issue Now <ChevronRight size={16} />
-                    </Link>
-                  ) : (
-                    <div className="flex items-center justify-center w-full py-3 px-4 border border-neutral-800 text-xs font-bold uppercase tracking-wider text-neutral-600 cursor-not-allowed">
-                      Restricted Access
-                    </div>
-                  )}
+                      {currentStepIndex === steps.length - 1 ? 'Finish' : 'Next'} 
+                      {currentStepIndex !== steps.length - 1 && <ChevronRight size={14} />}
+                    </button>
+                  </div>
                 </div>
-
               </div>
-              
-              <div className="mt-16 text-center">
-                 <button 
-                  onClick={() => setShowGuide(false)}
-                  className="text-neutral-500 hover:text-white text-xs font-bold uppercase tracking-widest transition-colors hover:underline underline-offset-4 decoration-primary"
-                 >
-                   Enter Dashboard
-                 </button>
-              </div>
-
             </div>
           </div>
-        </div>
+        </>
       )}
 
     </div>
   );
 };
-
 
 export default Dashboard;
