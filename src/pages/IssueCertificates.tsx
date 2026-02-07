@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileCheck, X, Plus, Loader, Shield, GraduationCap, Award, Briefcase, Globe, ChevronDown } from 'lucide-react';
+import { Upload, FileCheck, X, Plus, Loader, Shield, GraduationCap, Award, Briefcase, Globe, ChevronDown, Building2 } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useWallet } from '../context/WalletContext';
 import { useCertificates } from '../context/CertificateContext';
 import { processExcelFile } from '../utils/helpers';
+import { getIssuerByCategory } from '../utils/issuers'; // Import the issuer registry
 import toast from 'react-hot-toast';
 
 // --- Configuration Data ---
@@ -140,17 +141,21 @@ const IssueCertificates: React.FC = () => {
     { value: 'verification', label: 'Verification Letter' }
   ];
 
-  // Logic Handlers (Unchanged)
+  // Logic Handlers
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isConnected || !isIssuer) { toast.error('Please connect authorized wallet'); return; }
     if (!formData.certificateCategory) { toast.error('Select a Credential Category'); return; }
 
     try {
+      // 1. Fetch Dynamic Issuer based on Category
+      const selectedIssuer = getIssuerByCategory(formData.certificateCategory);
+
       await issueCertificate({
         ...formData,
         issuerAddress: walletAddress,
-        issuerName: 'Authorized Issuer',
+        issuerName: selectedIssuer.name, // Use Dynamic Name (e.g., IIT Delhi)
+        issuerDID: selectedIssuer.did,   // Use Dynamic DID
         issueDate: new Date(formData.issueDate),
         expiryDate: formData.expiryDate ? new Date(formData.expiryDate) : undefined,
         // @ts-ignore
@@ -159,7 +164,7 @@ const IssueCertificates: React.FC = () => {
         subCategory: formData.certificateSubCategory
       } as any);
 
-      toast.success('Certificate issued successfully!');
+      toast.success(`Certificate issued successfully by ${selectedIssuer.name}!`);
       setFormData(initialFormState);
       setListInput('');
     } catch (error: any) {
@@ -186,23 +191,32 @@ const IssueCertificates: React.FC = () => {
 
       if (!isValidData) { toast.error('Invalid Excel format'); return; }
 
+      // 1. Fetch Dynamic Issuer based on Category
+      const selectedIssuer = getIssuerByCategory(formData.certificateCategory);
+
       await issueBulkCertificates(
         data.map((row: any) => ({
           name: row.name,
           recipientAddress: row.walletAddress,
           rollNo: row.rollNo,
           issuerAddress: walletAddress,
-          issuerName: 'Authorized Issuer',
+          issuerName: selectedIssuer.name, // Use Dynamic Name
+          issuerDID: selectedIssuer.did,   // Use Dynamic DID
           certificateType: formData.certificateType,
           // @ts-ignore
           category: formData.certificateCategory,
           // @ts-ignore
           subCategory: formData.certificateSubCategory,
           issueDate: new Date(),
-          metadata: { ...formData.metadata, course: row.course || formData.metadata.course }
+          metadata: { 
+            ...formData.metadata, 
+            course: row.course || formData.metadata.course,
+            // If user didn't type organization, use the Issuer Name (e.g. TCS)
+            organization: formData.metadata.organization || selectedIssuer.name
+          }
         } as any))
       );
-      toast.success('Bulk issue successful');
+      toast.success(`Bulk issue successful as ${selectedIssuer.name}`);
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (error: any) {
@@ -237,6 +251,9 @@ const IssueCertificates: React.FC = () => {
   };
 
   const labels = getFieldLabels(formData.certificateCategory);
+
+  // Helper to show current Issuer
+  const currentIssuer = formData.certificateCategory ? getIssuerByCategory(formData.certificateCategory) : null;
 
   if (!isConnected || !isIssuer) {
     return (
@@ -406,7 +423,21 @@ const IssueCertificates: React.FC = () => {
               {/* Right Column: Details */}
               <div className="lg:col-span-7">
                 <div className="bg-white lg:pl-12 h-full">
-                  <SectionHeader number="03" title="Details" />
+                  <div className="flex justify-between items-baseline border-b border-gray-100 pb-4 mb-8">
+                    <div className="flex items-baseline gap-4">
+                        <span className="text-2xl font-light text-neutral-300">03</span>
+                        <h3 className="text-lg font-medium text-neutral-900 uppercase tracking-wide">Details</h3>
+                    </div>
+                    {/* Visual Indicator of the selected Issuer */}
+                    {currentIssuer && (
+                        <div className="flex items-center gap-2 px-3 py-1 bg-orange-50 rounded-full border border-orange-100">
+                            <Building2 className="w-4 h-4 text-primary" />
+                            <span className="text-xs font-semibold text-primary/80 uppercase tracking-wider">
+                                Acting as: {currentIssuer.name}
+                            </span>
+                        </div>
+                    )}
+                  </div>
                   
                   {formData.certificateCategory ? (
                     <div className="space-y-8">
@@ -423,6 +454,8 @@ const IssueCertificates: React.FC = () => {
                           <Input
                             value={formData.metadata.organization}
                             onChange={(e) => setFormData(p => ({ ...p, metadata: { ...p.metadata, organization: e.target.value } }))}
+                            // Placeholder hint to show the default issuer name
+                            placeholder={currentIssuer?.name || "Organization Name"}
                           />
                         </div>
                         <div>
