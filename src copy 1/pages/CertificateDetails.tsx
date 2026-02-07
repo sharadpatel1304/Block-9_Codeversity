@@ -6,7 +6,6 @@ import { useWallet } from '../context/WalletContext';
 import Certificate from '../components/Certificate';
 import { generateHighQualityPDF, copyToClipboard, truncateAddress } from '../utils/helpers';
 import toast from 'react-hot-toast';
-import { useLanguage } from '../context/LanguageContext'; // 1. Import Hook
 
 const CertificateDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,15 +13,14 @@ const CertificateDetails: React.FC = () => {
   const { getCertificateById, revokeCertificate } = useCertificates();
   const { walletAddress } = useWallet();
   const certificateRef = useRef<HTMLDivElement>(null);
-  const { t } = useLanguage(); // 2. Destructure t function
   
   const certificate = id ? getCertificateById(id) : undefined;
   
   if (!certificate) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-        <h1 className="text-2xl font-light text-neutral-900 mb-4">{t('Certificate Not Found')}</h1>
-        <button onClick={() => navigate(-1)} className="text-primary hover:underline">{t('Return to Wallet') || "Return to Wallet"}</button>
+        <h1 className="text-2xl font-light text-neutral-900 mb-4">Certificate Not Found</h1>
+        <button onClick={() => navigate(-1)} className="text-primary hover:underline">Return to Wallet</button>
       </div>
     );
   }
@@ -86,19 +84,19 @@ const CertificateDetails: React.FC = () => {
               onClick={() => navigate(-1)} 
               className="group flex items-center gap-2 text-neutral-400 hover:text-neutral-900 transition-colors mb-4 text-sm font-medium"
             >
-              <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> {t('Back to Wallet') || "Back to Wallet"}
+              <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back to Wallet
             </button>
             <h1 className="text-4xl font-light text-neutral-900 tracking-tight">
-              {t(certificate.certificateType) || certificate.certificateType}
+              {certificate.certificateType}
             </h1>
           </div>
 
           <div className="flex gap-3">
              <button onClick={handleDownload} className="flex items-center gap-2 px-6 py-3 border border-gray-200 text-sm font-medium hover:border-primary hover:text-primary transition-colors">
-              <Download size={16} /> <span className="hidden sm:inline">{t('Download') || "Download"}</span>
+              <Download size={16} /> <span className="hidden sm:inline">Download</span>
             </button>
             <button onClick={handleShare} className="flex items-center gap-2 px-6 py-3 border border-gray-200 text-sm font-medium hover:border-primary hover:text-primary transition-colors">
-              <Share2 size={16} /> <span className="hidden sm:inline">{t('Share') || "Share"}</span>
+              <Share2 size={16} /> <span className="hidden sm:inline">Share</span>
             </button>
              <a 
                href={`/verify?id=${certificate.id}`} 
@@ -106,7 +104,7 @@ const CertificateDetails: React.FC = () => {
                rel="noreferrer" 
                className="flex items-center gap-2 px-6 py-3 bg-neutral-900 text-white text-sm font-medium hover:bg-primary transition-colors"
              >
-              <ShieldCheck size={16} /> {t('verify')}
+              <ShieldCheck size={16} /> Verify
             </a>
             {isIssuer && certificate.status === 'valid' && (
                <button onClick={handleRevoke} className="flex items-center gap-2 px-6 py-3 border border-red-100 text-red-600 bg-white text-sm font-medium hover:bg-red-50 transition-colors">
@@ -122,7 +120,7 @@ const CertificateDetails: React.FC = () => {
           {/* LEFT: Large Certificate Preview */}
           <div className="lg:col-span-7">
              <div className="sticky top-8">
-               <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-widest mb-6">{t('Document Preview') || "Document Preview"}</h3>
+               <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-widest mb-6">Document Preview</h3>
                <div className="border border-gray-100 shadow-[0_20px_50px_rgba(0,0,0,0.03)] p-8 flex justify-center bg-white" ref={certificateRef}>
                   <div className="transform origin-top scale-95">
                     <Certificate certificate={certificate} showDetails={true} />
@@ -137,25 +135,25 @@ const CertificateDetails: React.FC = () => {
             {/* Essential Info */}
             <section>
               <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-widest mb-6 border-b border-gray-100 pb-2">
-                {t('Credential Information') || "Credential Information"}
+                Credential Information
               </h3>
               <div className="grid grid-cols-1 gap-8">
-                <InfoBlock label={t('Recipient Name') || "Recipient Name"} value={certificate.name} icon={User} />
-                <InfoBlock label={t('lbl_org') || "Issuer Organization"} value={certificate.issuerName} icon={FileText} />
+                <InfoBlock label="Recipient Name" value={certificate.name} icon={User} />
+                <InfoBlock label="Issuer Organization" value={certificate.issuerName} icon={FileText} />
                 <div className="grid grid-cols-2 gap-4">
-                  <InfoBlock label={t('iss_date') || "Issue Date"} value={new Date(certificate.issueDate).toLocaleDateString()} icon={Calendar} />
+                  <InfoBlock label="Issue Date" value={new Date(certificate.issueDate).toLocaleDateString()} icon={Calendar} />
                   {certificate.expiryDate && (
-                    <InfoBlock label={t('Expiry Date') || "Expiry Date"} value={new Date(certificate.expiryDate).toLocaleDateString()} icon={Calendar} />
+                    <InfoBlock label="Expiry Date" value={new Date(certificate.expiryDate).toLocaleDateString()} icon={Calendar} />
                   )}
                 </div>
                  <div>
-                    <h4 className="flex items-center gap-2 text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">{t('Status') || "Status"}</h4>
+                    <h4 className="flex items-center gap-2 text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Status</h4>
                     <span className={`inline-block px-3 py-1 text-xs font-bold uppercase tracking-wider border ${
                         certificate.status === 'valid' ? 'border-emerald-600 text-emerald-700' :
                         certificate.status === 'expired' ? 'border-amber-600 text-amber-700' :
                         'border-red-600 text-red-700'
                       }`}>
-                        {t(certificate.status) || certificate.status}
+                        {certificate.status}
                     </span>
                  </div>
               </div>
@@ -164,13 +162,13 @@ const CertificateDetails: React.FC = () => {
             {/* Blockchain Proof */}
             <section>
               <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-widest mb-6 border-b border-gray-100 pb-2">
-                {t('Blockchain Verification') || "Blockchain Verification"}
+                Blockchain Verification
               </h3>
               <div className="space-y-6">
-                <InfoBlock label={t('Certificate ID') || "Certificate ID (UUID)"} value={certificate.id} copy />
+                <InfoBlock label="Certificate ID (UUID)" value={certificate.id} copy />
                 
                 <div>
-                   <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">{t('Transaction Hash') || "Transaction Hash"}</h4>
+                   <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Transaction Hash</h4>
                    <div className="flex items-center gap-2 bg-white border border-gray-200 p-3">
                       <p className="text-xs font-mono text-neutral-600 truncate flex-1">{certificate.blockchainHash}</p>
                       <a 
@@ -185,8 +183,8 @@ const CertificateDetails: React.FC = () => {
                    </div>
                 </div>
 
-                <InfoBlock label={t('iss_wallet') || "Issuer Wallet"} value={truncateAddress(certificate.issuerAddress)} copy />
-                <InfoBlock label={t('IPFS Reference') || "IPFS Reference"} value={certificate.ipfsHash || "N/A"} copy />
+                <InfoBlock label="Issuer Wallet" value={truncateAddress(certificate.issuerAddress)} copy />
+                <InfoBlock label="IPFS Reference" value={certificate.ipfsHash || "N/A"} copy />
               </div>
             </section>
 

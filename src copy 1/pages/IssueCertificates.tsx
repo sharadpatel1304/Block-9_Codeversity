@@ -1,15 +1,38 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Upload, FileCheck, X, Plus, Loader, Shield, GraduationCap, 
   Award, Briefcase, Globe, ChevronDown, Info, FileSpreadsheet, 
-  CheckCircle2, BookOpen 
+  CheckCircle2, AlertCircle, BookOpen 
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useWallet } from '../context/WalletContext';
 import { useCertificates } from '../context/CertificateContext';
 import { processExcelFile } from '../utils/helpers';
 import toast from 'react-hot-toast';
-import { useLanguage } from '../context/LanguageContext';
+
+// --- Configuration Data ---
+const credentialCategories: Record<string, { label: string; subcategories: string[] }> = {
+  academic: {
+    label: 'Academic Credentials',
+    subcategories: ['Degree Certificate', 'Diploma Certificate', 'Marksheet / Transcript', 'Course Completion', 'Research Grant']
+  },
+  skill: {
+    label: 'Skill & Training Credentials',
+    subcategories: ['Skill Certification', 'Training Completion', 'Workshop / Bootcamp', 'Language Proficiency']
+  },
+  employment: {
+    label: 'Employment & Experience Records',
+    subcategories: ['Experience Letter', 'Internship Certificate', 'Employment Verification', 'Recommendation Letter']
+  },
+  government: {
+    label: 'Professional / Government Credentials',
+    subcategories: ['Professional License', 'Government Authorization', 'Regulatory Certificate', 'Identity Proof']
+  },
+  gig: {
+    label: 'Informal / Gig Credentials',
+    subcategories: ['Gig Work Record', 'Platform Skill Rating', 'Work History Summary', 'Project Completion']
+  }
+};
 
 interface FormData {
   certificateCategory: string;
@@ -99,13 +122,14 @@ const Select = ({ label, value, onChange, options, disabled = false }: any) => (
   </div>
 );
 
-// --- Guide Modal ---
+// --- NEW GUIDE MODAL COMPONENT ---
 const GuideModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        
         {/* Header */}
         <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-orange-50/30">
           <div className="flex items-center gap-3">
@@ -124,52 +148,127 @@ const GuideModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
 
         {/* Content Scroll */}
         <div className="overflow-y-auto p-8 space-y-10 custom-scrollbar">
+          
+          {/* 1. Basics */}
           <section>
             <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
-              <Shield size={18} className="text-primary" /> Prerequisites
+              <Shield size={18} className="text-primary" /> 
+              Prerequisites
             </h3>
             <div className="grid md:grid-cols-2 gap-4">
               <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                 <span className="font-semibold text-neutral-900 block mb-1">Issuer Access</span>
-                <p className="text-sm text-neutral-600 leading-relaxed">Only whitelisted wallet addresses can access this page.</p>
+                <p className="text-sm text-neutral-600 leading-relaxed">
+                  Only whitelisted wallet addresses can access this page. Ensure you are connected with the correct wallet authorized by the platform admin.
+                </p>
               </div>
               <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                 <span className="font-semibold text-neutral-900 block mb-1">Blockchain Gas</span>
-                <p className="text-sm text-neutral-600 leading-relaxed">Ensure your wallet is funded with native tokens (ETH/MATIC).</p>
+                <p className="text-sm text-neutral-600 leading-relaxed">
+                  Issuing certificates requires a small amount of native token (ETH/MATIC) to pay for gas fees. Ensure your wallet is funded.
+                </p>
               </div>
             </div>
           </section>
 
           <hr className="border-gray-100" />
 
+          {/* 2. Categories */}
           <section>
-            <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
-              <FileSpreadsheet size={18} className="text-primary" /> Bulk Upload Format
+             <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
+              <Award size={18} className="text-primary" /> 
+              Understanding Categories
             </h3>
-            <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-5">
-              <h4 className="font-semibold text-emerald-900 text-sm mb-3">Required Excel Structure (.xlsx)</h4>
-              <p className="text-sm text-emerald-800 mb-4">Required headers: <strong>name, walletAddress, rollNo</strong></p>
+            <p className="text-sm text-neutral-600 mb-4">
+              Selecting the correct category changes the input fields to match industry standards.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { label: 'Academic', desc: 'For Universities & Schools. Fields: GPA, Course Name, Student ID.' },
+                { label: 'Employment', desc: 'For HR & Companies. Fields: Job Title, Employee ID, Responsibilities.' },
+                { label: 'Skill', desc: 'For Bootcamps & Workshops. Fields: Competencies, Score, Project Links.' },
+              ].map((item, i) => (
+                <div key={i} className="bg-orange-50/50 p-4 rounded-lg border border-orange-100/50">
+                  <span className="font-semibold text-neutral-900 block text-sm mb-1">{item.label}</span>
+                  <p className="text-xs text-neutral-500">{item.desc}</p>
+                </div>
+              ))}
             </div>
           </section>
 
           <hr className="border-gray-100" />
 
+          {/* 3. Bulk Upload Guide */}
+          <section>
+            <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
+              <FileSpreadsheet size={18} className="text-primary" /> 
+              Bulk Upload Format
+            </h3>
+            <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-5">
+              <h4 className="font-semibold text-emerald-900 text-sm mb-3">Required Excel Structure (.xlsx)</h4>
+              <p className="text-sm text-emerald-800 mb-4">
+                Your Excel file <strong>must</strong> contain the following headers exactly as written:
+              </p>
+              
+              <div className="overflow-x-auto bg-white rounded-lg border border-emerald-100 shadow-sm">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-emerald-100/50 text-emerald-900 font-semibold">
+                    <tr>
+                      <th className="px-4 py-2">name</th>
+                      <th className="px-4 py-2">walletAddress</th>
+                      <th className="px-4 py-2">rollNo</th>
+                      <th className="px-4 py-2">course <span className="font-light opacity-70">(Optional)</span></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-emerald-50">
+                    <tr>
+                      <td className="px-4 py-2 text-neutral-600">Alice Smith</td>
+                      <td className="px-4 py-2 text-neutral-600 font-mono text-xs">0x71C...9A2</td>
+                      <td className="px-4 py-2 text-neutral-600">A-101</td>
+                      <td className="px-4 py-2 text-neutral-600">React Advanced</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2 text-neutral-600">Bob Jones</td>
+                      <td className="px-4 py-2 text-neutral-600 font-mono text-xs">0x3D2...1B4</td>
+                      <td className="px-4 py-2 text-neutral-600">A-102</td>
+                      <td className="px-4 py-2 text-neutral-600">React Advanced</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex gap-2 mt-4 text-xs text-emerald-700 items-start">
+                <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                <p>Ensure there are no empty rows between data. Wallet addresses must be valid EVM addresses.</p>
+              </div>
+            </div>
+          </section>
+
+          <hr className="border-gray-100" />
+
+           {/* 4. Steps */}
            <section>
             <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
-              <CheckCircle2 size={18} className="text-primary" /> Workflow
+              <CheckCircle2 size={18} className="text-primary" /> 
+              Workflow
             </h3>
             <ol className="list-decimal list-inside space-y-2 text-sm text-neutral-600">
               <li><strong>Connect:</strong> Sign in with your issuer wallet.</li>
-              <li><strong>Select Mode:</strong> Choose Single or Bulk.</li>
-              <li><strong>Define Context:</strong> Select the Category and Subcategory.</li>
-              <li><strong>Fill Data:</strong> Enter details or upload Excel.</li>
-              <li><strong>Issue:</strong> Click "Issue Certificate" and confirm.</li>
+              <li><strong>Select Mode:</strong> Choose Single for individual issuance or Bulk for classes/batches.</li>
+              <li><strong>Define Context:</strong> Select the Category and Subcategory (e.g., Academic - Diploma).</li>
+              <li><strong>Fill Data:</strong> Enter recipient details manually or upload the Excel sheet.</li>
+              <li><strong>Issue:</strong> Click "Issue Certificate". Confirm the transaction in your wallet popup.</li>
+              <li><strong>Wait:</strong> The system will wait for blockchain confirmation (usually 10-30 seconds).</li>
             </ol>
            </section>
+
         </div>
         
+        {/* Footer */}
         <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end">
-          <button onClick={onClose} className="px-6 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors text-sm font-medium">
+          <button 
+            onClick={onClose}
+            className="px-6 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors text-sm font-medium"
+          >
             Close Guide
           </button>
         </div>
@@ -178,83 +277,29 @@ const GuideModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
   );
 };
 
+
 const IssueCertificates: React.FC = () => {
   const { walletAddress, isConnected, isIssuer } = useWallet();
   const { issueCertificate, issueBulkCertificates, isLoading } = useCertificates();
-  const { t } = useLanguage();
-
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [formData, setFormData] = useState<FormData>(initialFormState);
   const [bulkUploadMode, setBulkUploadMode] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [listInput, setListInput] = useState('');
+  
+  // State for Guide Modal
   const [isGuideOpen, setIsGuideOpen] = useState(false);
 
-  // --- Dynamic Categories & Subcategories (Translated) ---
-  const credentialCategories = useMemo(() => {
-    // Helper to create option object
-    const opt = (val: string, labelKey: string) => ({ value: val, label: t(labelKey) || val });
-
-    return {
-      academic: {
-        label: t('cat_academic'),
-        subcategories: [
-          opt('Degree Certificate', 'Degree Certificate'),
-          opt('Diploma Certificate', 'Diploma Certificate'),
-          opt('Marksheet / Transcript', 'Marksheet / Transcript'),
-          opt('Course Completion', 'Course Completion'),
-          opt('Research Grant', 'Research Grant')
-        ]
-      },
-      skill: {
-        label: t('cat_skill'),
-        subcategories: [
-          opt('Skill Certification', 'Skill Certification'),
-          opt('Training Completion', 'Training Completion'),
-          opt('Workshop / Bootcamp', 'Workshop / Bootcamp'),
-          opt('Language Proficiency', 'Language Proficiency')
-        ]
-      },
-      employment: {
-        label: t('cat_employment'),
-        subcategories: [
-          opt('Experience Letter', 'Experience Letter'),
-          opt('Internship Certificate', 'Internship Certificate'),
-          opt('Employment Verification', 'Employment Verification'),
-          opt('Recommendation Letter', 'Recommendation Letter')
-        ]
-      },
-      government: {
-        label: t('cat_gov'),
-        subcategories: [
-          opt('Professional License', 'Professional License'),
-          opt('Government Authorization', 'Government Authorization'),
-          opt('Regulatory Certificate', 'Regulatory Certificate'),
-          opt('Identity Proof', 'Identity Proof')
-        ]
-      },
-      gig: {
-        label: t('cat_gig'),
-        subcategories: [
-          opt('Gig Work Record', 'Gig Work Record'),
-          opt('Platform Skill Rating', 'Platform Skill Rating'),
-          opt('Work History Summary', 'Work History Summary'),
-          opt('Project Completion', 'Project Completion')
-        ]
-      }
-    };
-  }, [t]);
-
-  // --- Dynamic Certificate Types (Translated) ---
-  const certificateTypes = useMemo(() => [
-    { value: 'completion', label: t('Certificate of Completion') },
-    { value: 'achievement', label: t('Certificate of Achievement') },
-    { value: 'participation', label: t('Certificate of Participation') },
-    { value: 'excellence', label: t('Certificate of Excellence') },
-    { value: 'training', label: t('Training Certificate') },
-    { value: 'license', label: t('Official License') },
-    { value: 'verification', label: t('Verification Letter') }
-  ], [t]);
+  const certificateTypes = [
+    { value: 'completion', label: 'Certificate of Completion' },
+    { value: 'achievement', label: 'Certificate of Achievement' },
+    { value: 'participation', label: 'Certificate of Participation' },
+    { value: 'excellence', label: 'Certificate of Excellence' },
+    { value: 'training', label: 'Training Certificate' },
+    { value: 'license', label: 'Official License' },
+    { value: 'verification', label: 'Verification Letter' }
+  ];
 
   // Logic Handlers
   const handleSubmit = async (e: React.FormEvent) => {
@@ -340,15 +385,15 @@ const IssueCertificates: React.FC = () => {
     }));
   };
 
-  // Helper for dynamic labels (using translation keys)
+  // Helper for dynamic labels
   const getFieldLabels = (category: string) => {
     switch (category) {
-      case 'academic': return { title: t('lbl_course'), org: t('lbl_org'), grade: t('lbl_grade'), ref: t('lbl_ref'), listTitle: 'Honors', icon: GraduationCap };
-      case 'skill': return { title: t('lbl_course'), org: t('lbl_org'), grade: t('lbl_grade'), ref: t('lbl_ref'), listTitle: 'Competencies', icon: Award };
+      case 'academic': return { title: 'Course Name', org: 'University', grade: 'GPA / Grade', ref: 'Student ID', listTitle: 'Honors', icon: GraduationCap };
+      case 'skill': return { title: 'Skill Name', org: 'Organization', grade: 'Score', ref: 'Certificate ID', listTitle: 'Competencies', icon: Award };
       case 'employment': return { title: 'Job Title', org: 'Employer', grade: 'Rating', ref: 'Employee ID', listTitle: 'Responsibilities', icon: Briefcase };
       case 'government': return { title: 'License Type', org: 'Authority', grade: 'Class', ref: 'License #', listTitle: 'Privileges', icon: Shield };
       case 'gig': return { title: 'Role', org: 'Platform', grade: 'Rating', ref: 'Job ID', listTitle: 'Highlights', icon: Globe };
-      default: return { title: t('lbl_course'), org: t('lbl_org'), grade: t('lbl_grade'), ref: t('lbl_ref'), listTitle: t('lbl_achievements'), icon: Award };
+      default: return { title: 'Title', org: 'Organization', grade: 'Grade', ref: 'Ref ID', listTitle: 'Achievements', icon: Award };
     }
   };
 
@@ -366,6 +411,7 @@ const IssueCertificates: React.FC = () => {
 
   return (
     <div className="bg-white min-h-screen pb-24 relative">
+      {/* Modal Render */}
       <GuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
 
       <div className="max-w-7xl mx-auto px-4 py-16">
@@ -375,17 +421,18 @@ const IssueCertificates: React.FC = () => {
           <div className="space-y-4">
             <div>
               <h1 className="text-4xl font-light text-neutral-900 tracking-tight mb-2">
-                {t('iss_pageTitle')}
+                Issue Credentials
               </h1>
-              <p className="text-neutral-500 font-light">{t('iss_pageSubtitle')}</p>
+              <p className="text-neutral-500 font-light">Deploy immutable records to the blockchain.</p>
             </div>
             
+            {/* Guide Button - NEW ADDITION */}
             <button 
               onClick={() => setIsGuideOpen(true)}
               className="inline-flex items-center gap-2 text-sm font-medium text-orange-600 bg-orange-50 px-4 py-2 rounded-full hover:bg-orange-100 transition-colors cursor-pointer group"
             >
               <Info size={16} />
-              <span>{t('iss_guideBtn')}</span>
+              <span>Read the User Guide</span>
               <BookOpen size={14} className="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all" />
             </button>
           </div>
@@ -398,7 +445,7 @@ const IssueCertificates: React.FC = () => {
                 !bulkUploadMode ? 'bg-neutral-900 text-white' : 'text-neutral-500 hover:text-neutral-900'
               }`}
             >
-              {t('iss_single')}
+              Single
             </button>
             <button
               onClick={() => setBulkUploadMode(true)}
@@ -406,7 +453,7 @@ const IssueCertificates: React.FC = () => {
                 bulkUploadMode ? 'bg-neutral-900 text-white' : 'text-neutral-500 hover:text-neutral-900'
               }`}
             >
-              {t('iss_bulk')}
+              Bulk Upload
             </button>
           </div>
         </div>
@@ -416,27 +463,26 @@ const IssueCertificates: React.FC = () => {
           <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-12">
               <Select
-                label={t('iss_cat')}
+                label="Category"
                 value={formData.certificateCategory}
                 onChange={(val: string) => setFormData(p => ({ ...p, certificateCategory: val, certificateSubCategory: '' }))}
                 options={Object.entries(credentialCategories).map(([k, v]) => ({ value: k, label: v.label }))}
               />
                <Select
-                label={t('iss_subcat')}
+                label="Subcategory"
                 value={formData.certificateSubCategory}
                 onChange={(val: string) => setFormData(p => ({ ...p, certificateSubCategory: val }))}
-                // @ts-ignore
-                options={formData.certificateCategory ? credentialCategories[formData.certificateCategory].subcategories : []}
+                options={formData.certificateCategory ? credentialCategories[formData.certificateCategory].subcategories.map(s => ({ value: s, label: s })) : []}
                 disabled={!formData.certificateCategory}
               />
                <Select
-                label={t('iss_temp')}
+                label="Template"
                 value={formData.certificateType}
                 onChange={(val: string) => setFormData(p => ({ ...p, certificateType: val }))}
                 options={certificateTypes}
               />
               <div>
-                <Label>{t('iss_event')}</Label>
+                <Label>Event Name</Label>
                 <Input
                   value={formData.metadata.eventName}
                   onChange={(e) => setFormData(p => ({ ...p, metadata: { ...p.metadata, eventName: e.target.value } }))}
@@ -464,7 +510,7 @@ const IssueCertificates: React.FC = () => {
               ) : (
                 <div className="flex flex-col items-center">
                   <Upload className="w-10 h-10 text-neutral-300 group-hover:text-primary mb-4 transition-colors" strokeWidth={1} />
-                  <p className="text-lg font-medium text-neutral-900 mb-1">{t('iss_bulk_drop')}</p>
+                  <p className="text-lg font-medium text-neutral-900 mb-1">Drop Excel File</p>
                   <p className="text-sm text-neutral-400 font-light">Columns: name, rollNo, walletAddress</p>
                   <span className="text-xs text-primary mt-4 opacity-0 group-hover:opacity-100 transition-opacity">Click to browse</span>
                 </div>
@@ -478,7 +524,7 @@ const IssueCertificates: React.FC = () => {
                 className="w-full bg-neutral-900 hover:bg-primary text-white py-4 text-sm font-bold uppercase tracking-widest transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 rounded-lg"
               >
                 {isLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                {isLoading ? t('iss_btn_processing') : t('iss_bulk_btn')}
+                {isLoading ? 'Processing...' : 'Start Bulk Issue'}
               </button>
             </div>
             
@@ -496,24 +542,23 @@ const IssueCertificates: React.FC = () => {
               {/* Left Column: Context */}
               <div className="lg:col-span-5 space-y-12">
                 <section>
-                  <SectionHeader number="01" title={t('iss_step1')} />
+                  <SectionHeader number="01" title="Classification" />
                   <div className="space-y-4">
                     <Select
-                      label={t('iss_cat')}
+                      label="Credential Category"
                       value={formData.certificateCategory}
                       onChange={(val: string) => setFormData(p => ({ ...p, certificateCategory: val, certificateSubCategory: '' }))}
                       options={Object.entries(credentialCategories).map(([k, v]) => ({ value: k, label: v.label }))}
                     />
                     <Select
-                      label={t('iss_subcat')}
+                      label="Subcategory"
                       value={formData.certificateSubCategory}
                       onChange={(val: string) => setFormData(p => ({ ...p, certificateSubCategory: val }))}
-                      // @ts-ignore
-                      options={formData.certificateCategory ? credentialCategories[formData.certificateCategory].subcategories : []}
+                      options={formData.certificateCategory ? credentialCategories[formData.certificateCategory].subcategories.map(s => ({ value: s, label: s })) : []}
                       disabled={!formData.certificateCategory}
                     />
                     <Select
-                      label={t('iss_temp')}
+                      label="Certificate Template"
                       value={formData.certificateType}
                       onChange={(val: string) => setFormData(p => ({ ...p, certificateType: val }))}
                       options={certificateTypes}
@@ -522,10 +567,10 @@ const IssueCertificates: React.FC = () => {
                 </section>
 
                 <section>
-                  <SectionHeader number="02" title={t('iss_step2')} />
+                  <SectionHeader number="02" title="Recipient" />
                   <div className="space-y-4">
                     <div className="mb-6">
-                      <Label>{t('iss_name')}</Label>
+                      <Label>Full Legal Name</Label>
                       <Input
                         value={formData.name}
                         onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))}
@@ -534,7 +579,7 @@ const IssueCertificates: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <Label>{t('iss_wallet')}</Label>
+                      <Label>Wallet Address</Label>
                       <Input
                         value={formData.recipientAddress}
                         onChange={(e) => setFormData(p => ({ ...p, recipientAddress: e.target.value }))}
@@ -549,7 +594,7 @@ const IssueCertificates: React.FC = () => {
               {/* Right Column: Details */}
               <div className="lg:col-span-7">
                 <div className="bg-white lg:pl-12 h-full">
-                  <SectionHeader number="03" title={t('iss_step3')} />
+                  <SectionHeader number="03" title="Details" />
                   
                   {formData.certificateCategory ? (
                     <div className="space-y-8">
@@ -575,8 +620,8 @@ const IssueCertificates: React.FC = () => {
                             onChange={(e) => setFormData(p => ({ ...p, metadata: { ...p.metadata, grade: e.target.value } }))}
                           />
                         </div>
-                          <div>
-                          <Label>{t('iss_date')}</Label>
+                         <div>
+                          <Label>Issue Date</Label>
                           <Input
                             type="date"
                             value={formData.issueDate}
@@ -631,18 +676,18 @@ const IssueCertificates: React.FC = () => {
                       </div>
 
                       <div className="pt-8">
-                          <button
+                         <button
                           type="submit"
                           disabled={isLoading}
                           className="w-full bg-primary hover:bg-neutral-900 text-white py-4 text-sm font-bold uppercase tracking-widest transition-colors disabled:opacity-50 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                         >
-                          {isLoading ? t('iss_btn_processing') : t('iss_btn')}
+                          {isLoading ? 'Processing...' : 'Issue Certificate'}
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div className="h-64 flex items-center justify-center border border-dashed border-gray-200 bg-neutral-50/50 rounded-xl text-neutral-400 font-light text-sm">
-                      {t('iss_select_cat')}
+                      Select a classification to view details
                     </div>
                   )}
                 </div>

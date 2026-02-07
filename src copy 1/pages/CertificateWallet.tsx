@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Award, Download, Share2, Trash2, Search, ChevronDown, Eye, X } from 'lucide-react';
+import { Award, Download, Share2, Trash2, Search, Filter, ChevronDown, Eye, X, Mail, Link as LinkIcon, AlertTriangle } from 'lucide-react';
 import { useCertificates, getCertificateStatus } from '../context/CertificateContext';
 import { useWallet } from '../context/WalletContext';
 import { formatDate } from '../utils/helpers';
 import toast from 'react-hot-toast';
-import { useLanguage } from '../context/LanguageContext'; // 1. Import Hook
 
 const CertificateWallet: React.FC = () => {
-  const { issuedCertificates, receivedCertificates, revokeCertificate } = useCertificates();
+  const { issuedCertificates, receivedCertificates, revokeCertificate, isLoading } = useCertificates();
   const { isConnected, isIssuer } = useWallet();
-  const { t } = useLanguage(); // 2. Destructure t function
   
   const [activeTab, setActiveTab] = useState<'received' | 'issued'>(isIssuer ? 'issued' : 'received');
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,23 +37,17 @@ const CertificateWallet: React.FC = () => {
   const handleRevoke = async () => {
       if (!certificateToRevoke || !revocationReason) return toast.error('Reason required');
       if (await revokeCertificate(certificateToRevoke, revocationReason)) {
-          toast.success('Revoked'); 
-          setShowRevokeModal(false); 
-          setCertificateToRevoke(null);
+          toast.success('Revoked'); setShowRevokeModal(false); setCertificateToRevoke(null);
       }
   };
-  
-  const handleShare = () => { 
-    toast.success(`Shared with ${recipientEmail}`); 
-    setShareModal({isOpen:false, certificateId:null}); 
-  };
+  const handleShare = () => { toast.success(`Shared with ${recipientEmail}`); setShareModal({isOpen:false, certificateId:null}); };
   
   if (!isConnected) {
     return (
       <div className="min-h-[80vh] flex flex-col items-center justify-center text-center px-4 bg-white">
         <Award className="w-16 h-16 text-neutral-200 mb-6" strokeWidth={1} />
-        <h1 className="text-3xl font-light text-neutral-900 mb-2">{t('Wallet Locked') || "Wallet Locked"}</h1>
-        <p className="text-neutral-500 font-light">{t('Connect wallet to view assets') || "Connect wallet to view assets"}.</p>
+        <h1 className="text-3xl font-light text-neutral-900 mb-2">Wallet Locked</h1>
+        <p className="text-neutral-500 font-light">Connect wallet to view assets.</p>
       </div>
     );
   }
@@ -68,10 +60,10 @@ const CertificateWallet: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-8">
           <div>
             <h1 className="text-5xl font-light text-neutral-900 tracking-tight mb-2">
-              {t('walletTitle')} 
+              My Wallet
             </h1>
             <p className="text-lg font-light text-neutral-500">
-              {filteredCertificates.length} {t('credentials found') || "credentials found"}
+              {filteredCertificates.length} credentials found
             </p>
           </div>
           
@@ -85,7 +77,7 @@ const CertificateWallet: React.FC = () => {
                 }`}
                 onClick={() => setActiveTab('issued')}
               >
-                {t('issue')} 
+                Issued
               </button>
               <button
                 className={`px-8 py-2 text-sm font-medium transition-colors ${
@@ -95,7 +87,7 @@ const CertificateWallet: React.FC = () => {
                 }`}
                 onClick={() => setActiveTab('received')}
               >
-                {t('myCerts')}
+                Received
               </button>
             </div>
           )}
@@ -107,7 +99,7 @@ const CertificateWallet: React.FC = () => {
             <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-primary transition-colors" size={20} />
             <input
               type="text"
-              placeholder={t('Search Credentials...') || "SEARCH CREDENTIALS..."}
+              placeholder="SEARCH CREDENTIALS..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-14 pr-6 py-4 bg-white border-none focus:ring-0 text-neutral-900 font-medium uppercase text-sm outline-none placeholder-neutral-400"
@@ -119,7 +111,7 @@ const CertificateWallet: React.FC = () => {
               onClick={() => setShowStatusDropdown(!showStatusDropdown)}
               className="w-full h-full flex items-center justify-between px-6 py-4 bg-white hover:bg-neutral-50 transition-colors text-neutral-900 font-medium uppercase text-sm"
             >
-              <span>{t(statusFilter) || statusFilter}</span>
+              <span>{statusFilter}</span>
               <ChevronDown size={18} />
             </button>
             
@@ -131,7 +123,7 @@ const CertificateWallet: React.FC = () => {
                     className="w-full text-left px-6 py-3 text-sm font-medium uppercase hover:bg-neutral-50 text-neutral-600 border-b border-gray-100 last:border-0"
                     onClick={() => { setStatusFilter(status as any); setShowStatusDropdown(false); }}
                   >
-                    {t(status) || status}
+                    {status}
                   </button>
                 ))}
               </div>
@@ -153,7 +145,7 @@ const CertificateWallet: React.FC = () => {
                     certificate.status === 'expired' ? 'border-amber-600 text-amber-700 bg-white' :
                     'border-red-600 text-red-700 bg-white'
                   }`}>
-                    {t(certificate.status) || certificate.status}
+                    {certificate.status}
                   </span>
                   <span className="text-xs font-medium text-neutral-400 font-mono">
                     {formatDate(certificate.issueDate)}
@@ -161,12 +153,12 @@ const CertificateWallet: React.FC = () => {
                 </div>
                 
                 <h3 className="text-2xl font-light text-neutral-900 mb-2 leading-tight group-hover:text-primary transition-colors">
-                  {t(certificate.certificateType)}
+                  {certificate.certificateType}
                 </h3>
                 
                 <div className="mt-4 pt-4 border-t border-gray-100">
                    <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1">
-                     {activeTab === 'issued' ? t('Issued To') || "Issued To" : t('Issued By') || "Issued By"}
+                     {activeTab === 'issued' ? 'Issued To' : 'Issued By'}
                    </p>
                    <p className="text-lg font-normal text-neutral-900 truncate">
                      {activeTab === 'issued' ? certificate.name : certificate.issuerName}
@@ -180,7 +172,7 @@ const CertificateWallet: React.FC = () => {
                   to={`/certificate/${certificate.id}`}
                   className="text-xs font-bold text-neutral-900 hover:text-primary flex items-center gap-2 uppercase tracking-wide border-b border-transparent hover:border-primary pb-0.5 transition-all"
                 >
-                  {t('View Details') || "View Details"} <Eye size={14} />
+                  View Details <Eye size={14} />
                 </Link>
                 
                 <div className="flex gap-4">
@@ -202,23 +194,23 @@ const CertificateWallet: React.FC = () => {
         </div>
       </div>
       
-      {/* Modals */}
+      {/* Modals remain mostly the same structure but ensure bg-white is used */}
       {showRevokeModal && (
         <div className="fixed inset-0 bg-white/90 z-50 flex items-center justify-center p-4">
           <div className="bg-white border border-gray-200 shadow-xl p-10 max-w-lg w-full relative">
             <button onClick={() => setShowRevokeModal(false)} className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-900"><X size={20} strokeWidth={1}/></button>
-            <h2 className="text-2xl font-light text-neutral-900 mb-2">{t('Revoke Certificate') || "Revoke Certificate"}</h2>
-            <p className="text-sm text-neutral-500 mb-6 font-light">{t('This action is permanent and cannot be undone.') || "This action is permanent and cannot be undone."}</p>
+            <h2 className="text-2xl font-light text-neutral-900 mb-2">Revoke Certificate</h2>
+            <p className="text-sm text-neutral-500 mb-6 font-light">This action is permanent and cannot be undone.</p>
             <textarea
               value={revocationReason}
               onChange={(e) => setRevocationReason(e.target.value)}
               className="w-full bg-white border border-gray-200 p-3 text-sm focus:border-red-600 outline-none mb-6 font-light"
-              placeholder={t('Reason for revocation...') || "Reason for revocation..."}
+              placeholder="Reason for revocation..."
               rows={3}
             />
             <div className="flex gap-4">
-              <button onClick={() => setShowRevokeModal(false)} className="flex-1 py-3 text-sm font-medium border border-gray-200 hover:bg-gray-50 text-neutral-700 transition-colors">{t('Cancel') || "Cancel"}</button>
-              <button onClick={handleRevoke} className="flex-1 py-3 text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition-colors">{t('Revoke') || "Revoke"}</button>
+              <button onClick={() => setShowRevokeModal(false)} className="flex-1 py-3 text-sm font-medium border border-gray-200 hover:bg-gray-50 text-neutral-700 transition-colors">Cancel</button>
+              <button onClick={handleRevoke} className="flex-1 py-3 text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition-colors">Revoke</button>
             </div>
           </div>
         </div>
@@ -228,10 +220,10 @@ const CertificateWallet: React.FC = () => {
          <div className="fixed inset-0 bg-white/90 z-50 flex items-center justify-center p-4">
           <div className="bg-white border border-gray-200 shadow-xl p-10 max-w-lg w-full relative">
             <button onClick={() => setShareModal({ isOpen: false, certificateId: null })} className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-900"><X size={20} strokeWidth={1}/></button>
-            <h2 className="text-2xl font-light text-neutral-900 mb-6">{t('Share Credential') || "Share Credential"}</h2>
+            <h2 className="text-2xl font-light text-neutral-900 mb-6">Share Credential</h2>
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2 block">{t('Email Address') || "Email Address"}</label>
+                <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2 block">Email Address</label>
                 <input 
                   type="email" 
                   value={recipientEmail} 
@@ -240,7 +232,7 @@ const CertificateWallet: React.FC = () => {
                   placeholder="recipient@example.com"
                 />
               </div>
-              <button onClick={handleShare} disabled={!recipientEmail} className="w-full bg-neutral-900 text-white py-4 text-sm font-bold uppercase hover:bg-primary transition-colors mt-4">{t('Send Link') || "Send Link"}</button>
+              <button onClick={handleShare} disabled={!recipientEmail} className="w-full bg-neutral-900 text-white py-4 text-sm font-bold uppercase hover:bg-primary transition-colors mt-4">Send Link</button>
             </div>
           </div>
          </div>

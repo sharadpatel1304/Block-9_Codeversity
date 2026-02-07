@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo} from 'react';
 import { Link } from 'react-router-dom';
 import { 
   FileCheck, Award, Wallet, Upload, ArrowRight, X, 
@@ -6,8 +6,8 @@ import {
 } from 'lucide-react';
 import { useWallet } from '../context/WalletContext';
 import { useCertificates, getCertificateStatus } from '../context/CertificateContext';
-import { useLanguage } from '../context/LanguageContext';
 
+// --- Types for the Tour ---
 type TourStep = {
   id: string; 
   title: string;
@@ -18,59 +18,61 @@ type TourStep = {
 const Dashboard: React.FC = () => {
   const { isConnected, isIssuer } = useWallet();
   const { issuedCertificates, receivedCertificates } = useCertificates();
-  const { t } = useLanguage();
   
   // --- Tour State ---
   const [runTour, setRunTour] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   
+  // State for the "Spotlight" and "Tooltip" positions
   const [spotlightStyle, setSpotlightStyle] = useState<React.CSSProperties>({ display: 'none' });
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({ opacity: 0 });
   const [isScrolling, setIsScrolling] = useState(false);
 
-  // --- Content ---
+  // --- IMPROVED CONTENT: Detailed Feature Breakdown ---
   const steps = useMemo(() => {
     const tourSteps: TourStep[] = [
       {
         id: 'hero-section',
-        title: t('dashboard'), 
-        description: t('heroDesc'),
+        title: 'The OpenCred Command Center',
+        description: 'Welcome to your decentralized identity hub. This dashboard gives you a complete overview of your blockchain interactions. From here, you can navigate to issue, manage, or verify credentials with zero third-party reliance.',
         position: 'center'
       },
       {
         id: 'action-verify',
-        title: t('verifyTitle'),
-        description: t('verifyDesc'),
+        title: 'Universal Verification Engine',
+        description: 'Trust, but verify. Use this tool to validate any credential instantly. Simply paste a Certificate ID to query the live blockchain ledger. You will see the issuer signature, issuance date, and current validity status (Valid, Expired, or Revoked).',
         position: 'bottom'
       },
       {
         id: 'action-wallet',
-        title: t('walletTitle'),
-        description: t('walletDesc'),
+        title: 'Your Credential Vault',
+        description: 'This is the home for your professional identity. Access your wallet to view all certificates earned by you. Inside, you can download high-res PDFs, generate public share links for LinkedIn, and manage your decentralized profile.',
         position: 'bottom'
       }
     ];
 
+    // Feature Explanation for Issuers
     if (isIssuer) {
       tourSteps.splice(1, 0, {
         id: 'action-issue',
-        title: t('issueTitle'),
-        description: t('issueDesc'),
+        title: 'Issuer Portal & Bulk Minting',
+        description: 'Authorized organizations use this portal to deploy credentials. You can issue single certificates via a simple form or use the Bulk Upload feature (Excel/CSV) to mint hundreds of credentials in one transaction. All actions are cryptographically signed.',
         position: 'bottom'
       });
     }
 
+    // Feature Explanation for Activity Feed
     if (isConnected) {
       tourSteps.push({
         id: 'activity-feed',
         title: 'Real-Time Ledger Activity',
-        description: 'Track your history at a glance. This feed updates automatically.',
+        description: 'Track your history at a glance. This feed updates automatically whenever you issue or receive a credential. It provides a quick status check—green for valid, amber for expired—and links directly to the detailed certificate view.',
         position: 'top'
       });
     }
 
     return tourSteps;
-  }, [isIssuer, isConnected, t]);
+  }, [isIssuer, isConnected]);
 
   // --- Auto-Start Check ---
   useEffect(() => {
@@ -81,18 +83,19 @@ const Dashboard: React.FC = () => {
     }
   }, []);
 
-  // --- The Positioning Engine ---
+  // --- The Positioning Engine (Robust Version) ---
   const updatePositions = () => {
     if (!runTour) return;
     
     const step = steps[currentStepIndex];
     if (!step) return;
 
+    // Center Modal logic
     if (step.position === 'center') {
       setSpotlightStyle({
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(23, 23, 23, 0.85)',
+        backgroundColor: 'rgba(23, 23, 23, 0.85)', // Dark backdrop
         zIndex: 50,
         transition: 'all 0.4s ease',
       });
@@ -108,17 +111,20 @@ const Dashboard: React.FC = () => {
       return;
     }
 
+    // Element Highlight logic
     const element = document.getElementById(step.id);
     if (element) {
       const rect = element.getBoundingClientRect();
-      const padding = 12;
+      const padding = 12; // Increased breathing room slightly
 
+      // 1. Set Spotlight Box (The transparent hole with giant shadow)
       setSpotlightStyle({
         position: 'fixed', 
         top: rect.top - padding,
         left: rect.left - padding,
         width: rect.width + (padding * 2),
         height: rect.height + (padding * 2),
+        // This shadow creates the dark overlay everywhere EXCEPT the box
         boxShadow: '0 0 0 9999px rgba(23, 23, 23, 0.85)', 
         borderRadius: '8px',
         zIndex: 50,
@@ -126,9 +132,10 @@ const Dashboard: React.FC = () => {
         transition: 'all 0.4s ease-out',
       });
 
+      // 2. Set Tooltip Box
       let top = 0;
       let left = 0;
-      const tooltipW = 380;
+      const tooltipW = 380; // Widened for better reading
       const tooltipH = 220; 
 
       if (step.position === 'bottom') {
@@ -139,6 +146,7 @@ const Dashboard: React.FC = () => {
         left = rect.left + (rect.width / 2) - (tooltipW / 2);
       }
 
+      // Edge detection 
       if (left < 20) left = 20;
       if (left + tooltipW > window.innerWidth) left = window.innerWidth - tooltipW - 20;
       if (top < 20) top = 20;
@@ -155,6 +163,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // --- Step Change Effect ---
   useLayoutEffect(() => {
     if (!runTour) return;
 
@@ -164,8 +173,10 @@ const Dashboard: React.FC = () => {
       const element = document.getElementById(step.id);
       if (element) {
         setIsScrolling(true);
+        // Smooth scroll to element
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         
+        // Wait for scroll to finish before locking position
         const timer = setTimeout(() => {
           setIsScrolling(false);
           updatePositions();
@@ -177,16 +188,21 @@ const Dashboard: React.FC = () => {
     }
   }, [currentStepIndex, runTour, steps]);
 
+  // --- Listen to Resize/Scroll ---
   useEffect(() => {
     if (!runTour) return;
+    
     window.addEventListener('resize', updatePositions);
     window.addEventListener('scroll', updatePositions, { passive: true });
+    
     return () => {
       window.removeEventListener('resize', updatePositions);
       window.removeEventListener('scroll', updatePositions);
     };
   }, [currentStepIndex, runTour]);
 
+
+  // --- Tour Actions ---
   const handleNext = () => {
     if (currentStepIndex < steps.length - 1) {
       setCurrentStepIndex(prev => prev + 1);
@@ -252,11 +268,11 @@ const Dashboard: React.FC = () => {
         {/* Hero Section */}
         <div id="hero-section" className="mb-20 max-w-3xl">
           <h1 className="text-5xl md:text-6xl font-light text-neutral-900 mb-8 tracking-tight">
-            {t('heroTitle')} <br/>
-            <span className="text-primary">{t('heroSubtitle')}</span>
+            Digital Trust, <br/>
+            <span className="text-primary">Simplified.</span>
           </h1>
           <p className="text-xl font-light text-neutral-500 leading-relaxed">
-            {t('heroDesc')}
+            OpenCred brings clarity to certification. Secure, tamper-proof, and built for the future of digital identity.
           </p>
         </div>
         
@@ -267,8 +283,8 @@ const Dashboard: React.FC = () => {
               id="action-issue"
               to="/issue" 
               icon={Upload} 
-              title={t('issueTitle')} 
-              description={t('issueDesc')}
+              title="Issue Certificates" 
+              description="Deploy blockchain-verified credentials directly to recipients."
             />
           )}
           
@@ -276,16 +292,16 @@ const Dashboard: React.FC = () => {
             id="action-verify"
             to="/verify" 
             icon={FileCheck} 
-            title={t('verifyTitle')}
-            description={t('verifyDesc')}
+            title="Verify Authenticity" 
+            description="Instantly validate any certificate using our decentralized ledger."
           />
           
           <ActionCard 
             id="action-wallet"
             to="/wallet" 
             icon={Wallet} 
-            title={t('walletTitle')}
-            description={t('walletDesc')}
+            title="Digital Wallet" 
+            description="Securely manage your professional achievements in one place."
           />
         </div>
         
@@ -377,10 +393,13 @@ const Dashboard: React.FC = () => {
       {/* --- TOUR OVERLAY ELEMENTS --- */}
       {runTour && (
         <>
+          {/* 1. SPOTLIGHT BOX */}
           <div 
             style={spotlightStyle}
             className={`pointer-events-none ${isScrolling ? 'opacity-0' : 'opacity-100'}`}
           />
+
+          {/* 2. TOOLTIP / GUIDE CONTENT */}
           <div 
             style={tooltipStyle}
             className={`w-[380px] outline-none ${isScrolling ? 'opacity-0' : 'opacity-100'}`}
@@ -441,6 +460,7 @@ const Dashboard: React.FC = () => {
           </div>
         </>
       )}
+
     </div>
   );
 };

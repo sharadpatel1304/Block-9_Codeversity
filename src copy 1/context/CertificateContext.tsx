@@ -8,14 +8,12 @@ import { useWallet } from './WalletContext';
 // Define the API URL
 const API_URL = 'https://block-9-codeversity.onrender.com/api';
 
-
-
 export interface Certificate {
   id: string;
   name: string;
   recipientAddress?: string;
   issuerAddress: string;
-  issuerName: string;
+  issuerName: string; // Now dynamic based on category
   certificateType: string;
   
   // --- ADDED NEW FIELDS ---
@@ -35,6 +33,7 @@ export interface Certificate {
     eventLocation?: string;
     eventDescription?: string;
     rollNo?: string;
+    issuerDID?: string; // Added to track the specific DID
     [key: string]: any;
   };
   ipfsHash: string;
@@ -174,11 +173,12 @@ export const CertificateProvider: React.FC<CertificateProviderProps> = ({ childr
       name: certificate.name,
       recipientAddress: certificate.recipientAddress,
       issuerAddress: certificate.issuerAddress,
+      issuerName: certificate.issuerName, // Include issuerName in hash for integrity
       issueDate: certificate.issueDate.toISOString(),
       ipfsHash: certificate.ipfsHash,
       metadata: certificate.metadata,
-      category: certificate.category,       // Added to hash
-      subCategory: certificate.subCategory  // Added to hash
+      category: certificate.category,       
+      subCategory: certificate.subCategory  
     });
     
     return ethers.keccak256(ethers.toUtf8Bytes(certData));
@@ -195,13 +195,14 @@ export const CertificateProvider: React.FC<CertificateProviderProps> = ({ childr
     try {
       const id = uuidv4();
       
-      // We create a temporary object. Typescript now knows about category/subCategory
       const certificateTemp: Omit<Certificate, 'blockchainHash' | 'signature'> = {
         ...certificateData,
         id,
         issuerAddress: walletAddress,
         ipfsHash: '',
         status: 'valid',
+        // Fallback for safety, though UI should always provide it
+        issuerName: certificateData.issuerName || 'Authorized Issuer',
       };
       
       const ipfsHash = await storeOnIPFS(certificateTemp);
@@ -261,10 +262,11 @@ export const CertificateProvider: React.FC<CertificateProviderProps> = ({ childr
         
         const batchPromises = batch.map(async (certData) => {
           try {
+            // FIX: Removed hardcoded 'Authorized Issuer'. 
+            // It now respects the issuerName passed in certData from the bulk upload logic.
             const certificate = await issueCertificate({
               ...certData,
               issuerAddress: walletAddress,
-              issuerName: 'Authorized Issuer',
             });
             return certificate;
           } catch (err) {
