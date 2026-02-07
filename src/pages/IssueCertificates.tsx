@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { 
   Upload, FileCheck, X, Plus, Loader, Shield, GraduationCap, 
   Award, Briefcase, Globe, ChevronDown, Info, FileSpreadsheet, 
-  CheckCircle2, BookOpen 
+  CheckCircle2, BookOpen, Fingerprint 
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useWallet } from '../context/WalletContext';
@@ -10,6 +10,30 @@ import { useCertificates } from '../context/CertificateContext';
 import { processExcelFile } from '../utils/helpers';
 import toast from 'react-hot-toast';
 import { useLanguage } from '../context/LanguageContext';
+
+// --- DID Configuration ---
+const CATEGORY_CONFIG: Record<string, { did: string; org: string }> = {
+  academic: { 
+    did: 'did:web:academy.opencred.org', 
+    org: 'OpenCred Academic Alliance' 
+  },
+  skill: { 
+    did: 'did:web:skills.opencred.org', 
+    org: 'OpenCred Skill Registry' 
+  },
+  employment: { 
+    did: 'did:web:work.opencred.org', 
+    org: 'OpenCred Employment Verification' 
+  },
+  government: { 
+    did: 'did:gov:opencred:id', 
+    org: 'Government Authority' 
+  },
+  gig: { 
+    did: 'did:web:gig.opencred.org', 
+    org: 'Decentralized Gig Platform' 
+  }
+};
 
 interface FormData {
   certificateCategory: string;
@@ -31,6 +55,7 @@ interface FormData {
     eventLocation?: string;
     eventDescription?: string;
     achievements: string[];
+    issuerDid?: string; // Added DID to metadata
     [key: string]: any;
   };
 }
@@ -54,7 +79,8 @@ const initialFormState: FormData = {
     eventDate: '',
     eventLocation: '',
     eventDescription: '',
-    achievements: []
+    achievements: [],
+    issuerDid: ''
   }
 };
 
@@ -256,23 +282,45 @@ const IssueCertificates: React.FC = () => {
     { value: 'verification', label: t('Verification Letter') }
   ], [t]);
 
-  // Logic Handlers
+  // --- Handlers ---
+
+  // Handle Category Change: Update Category AND Auto-fill Organization/DID
+  const handleCategoryChange = (val: string) => {
+    const config = CATEGORY_CONFIG[val];
+    setFormData(prev => ({
+      ...prev,
+      certificateCategory: val,
+      certificateSubCategory: '',
+      metadata: {
+        ...prev.metadata,
+        organization: config ? config.org : '', // Auto-populate Organization Name
+        issuerDid: config ? config.did : ''     // Set DID internally
+      }
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isConnected || !isIssuer) { toast.error('Please connect authorized wallet'); return; }
     if (!formData.certificateCategory) { toast.error('Select a Credential Category'); return; }
 
     try {
+      const config = CATEGORY_CONFIG[formData.certificateCategory];
+      
       await issueCertificate({
         ...formData,
         issuerAddress: walletAddress,
-        issuerName: 'Authorized Issuer',
+        issuerName: formData.metadata.organization || config.org || 'Authorized Issuer', // Use the specific DID Org Name
         issueDate: new Date(formData.issueDate),
         expiryDate: formData.expiryDate ? new Date(formData.expiryDate) : undefined,
         // @ts-ignore
         category: formData.certificateCategory,
         // @ts-ignore
-        subCategory: formData.certificateSubCategory
+        subCategory: formData.certificateSubCategory,
+        metadata: {
+          ...formData.metadata,
+          issuerDid: config ? config.did : '' // Ensure DID is in metadata
+        }
       } as any);
 
       toast.success('Certificate issued successfully!');
@@ -302,20 +350,26 @@ const IssueCertificates: React.FC = () => {
 
       if (!isValidData) { toast.error('Invalid Excel format'); return; }
 
+      const config = CATEGORY_CONFIG[formData.certificateCategory];
+
       await issueBulkCertificates(
         data.map((row: any) => ({
           name: row.name,
           recipientAddress: row.walletAddress,
           rollNo: row.rollNo,
           issuerAddress: walletAddress,
-          issuerName: 'Authorized Issuer',
+          issuerName: formData.metadata.organization || config.org || 'Authorized Issuer', // Use specific Org Name
           certificateType: formData.certificateType,
           // @ts-ignore
           category: formData.certificateCategory,
           // @ts-ignore
           subCategory: formData.certificateSubCategory,
           issueDate: new Date(),
-          metadata: { ...formData.metadata, course: row.course || formData.metadata.course }
+          metadata: { 
+            ...formData.metadata, 
+            course: row.course || formData.metadata.course,
+            issuerDid: config ? config.did : '' // Inject DID into bulk records
+          }
         } as any))
       );
       toast.success('Bulk issue successful');
@@ -418,7 +472,7 @@ const IssueCertificates: React.FC = () => {
               <Select
                 label={t('iss_cat')}
                 value={formData.certificateCategory}
-                onChange={(val: string) => setFormData(p => ({ ...p, certificateCategory: val, certificateSubCategory: '' }))}
+                onChange={handleCategoryChange} // Updated to use new handler
                 options={Object.entries(credentialCategories).map(([k, v]) => ({ value: k, label: v.label }))}
               />
                <Select
@@ -501,9 +555,20 @@ const IssueCertificates: React.FC = () => {
                     <Select
                       label={t('iss_cat')}
                       value={formData.certificateCategory}
-                      onChange={(val: string) => setFormData(p => ({ ...p, certificateCategory: val, certificateSubCategory: '' }))}
+                      onChange={handleCategoryChange} // Updated to use new handler
                       options={Object.entries(credentialCategories).map(([k, v]) => ({ value: k, label: v.label }))}
                     />
+                    
+                    {/* DID Display Indicator */}
+                    {formData.certificateCategory && CATEGORY_CONFIG[formData.certificateCategory] && (
+                      <div className="flex items-center gap-2 bg-blue-50/50 p-3 rounded-lg border border-blue-100 text-xs text-blue-700 animate-in fade-in">
+                        <Fingerprint size={14} />
+                        <span className="font-mono">
+                          Issuer DID: {CATEGORY_CONFIG[formData.certificateCategory].did}
+                        </span>
+                      </div>
+                    )}
+
                     <Select
                       label={t('iss_subcat')}
                       value={formData.certificateSubCategory}
@@ -566,6 +631,7 @@ const IssueCertificates: React.FC = () => {
                           <Input
                             value={formData.metadata.organization}
                             onChange={(e) => setFormData(p => ({ ...p, metadata: { ...p.metadata, organization: e.target.value } }))}
+                            placeholder="Organization Name" // Will auto-fill
                           />
                         </div>
                         <div>
@@ -582,6 +648,15 @@ const IssueCertificates: React.FC = () => {
                             value={formData.issueDate}
                             onChange={(e) => setFormData(p => ({ ...p, issueDate: e.target.value }))}
                             required
+                          />
+                        </div>
+                        <div>
+                          <Label>{t('Expiry Date') || "Expiry Date"}</Label>
+                          <Input
+                            type="date"
+                            value={formData.expiryDate}
+                            onChange={(e) => setFormData(p => ({ ...p, expiryDate: e.target.value }))}
+                            placeholder="Optional"
                           />
                         </div>
                         <div>
